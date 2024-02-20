@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "osl-mb-foils"
+version = "0.1.0"
+description = "Data analysis of OSL MB foils"
+authors = ["Leszek Grzanka <leszek.grzanka@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+numpy = "^1.26.4"
+pandas = "^2.2.0"
+matplotlib = "^3.8.3"
+seaborn = "^0.13.2"
+
+[tool.poetry.group.dev.dependencies]
+pre-commit = "^3.6.2"
+yapf = "^0.40.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
