@@ -40,7 +40,7 @@ def min_max_area_loc(data: npt.NDArray, circle_px: Circle, window_size : int = 1
     return (min_center, max_center)
     
 
-def plot_data(data : npt.NDArray, path : str, circle_px: Optional[Circle] = None, details : bool = False):
+def plot_data(data : npt.NDArray, path : str, circle_px: Optional[Circle] = None, details : bool = False, clip: bool = True):
     circle = circle_px
     if not circle:
         circle = Circle(x=data.shape[0]/2,y=data.shape[0]/2,r=250)
@@ -53,7 +53,9 @@ def plot_data(data : npt.NDArray, path : str, circle_px: Optional[Circle] = None
         fig, ax = plt.subplots(figsize=(16,10), constrained_layout=True)
     
     # don't plot top 5% to avoid hot pixels
-    data_for_plotting = np.clip(data, a_min=None, a_max=np.nanpercentile(a=data, q=95))
+    data_for_plotting = data[()]
+    if clip:
+        data_for_plotting = np.clip(data, a_min=None, a_max=np.nanpercentile(a=data, q=95))
     pos0 = ax.imshow(data_for_plotting, cmap='terrain', interpolation='None');
     plt.colorbar(pos0, ax=ax, shrink=0.4);
 
