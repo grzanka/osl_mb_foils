@@ -45,11 +45,11 @@ def min_max_area_loc(
 
 
 def plot_data(data: npt.NDArray,
-              path: str,
+              path: str = '',
               circle_px: Optional[Circle] = None,
               details: bool = False,
               clip: bool = True,
-              figsize=(16, 10)):
+              figsize=(8, 10)):
     circle = circle_px
     if not circle:
         circle = Circle(x=data.shape[0] / 2, y=data.shape[0] / 2, r=250)
@@ -90,7 +90,7 @@ def plot_data(data: npt.NDArray,
                 0.95,
                 text_for_circle,
                 transform=ax.transAxes,
-                fontsize=14,
+                fontsize=10,
                 verticalalignment='top',
                 horizontalalignment='left',
                 bbox=props)
@@ -100,7 +100,7 @@ def plot_data(data: npt.NDArray,
                 0.95,
                 text_for_image,
                 transform=ax.transAxes,
-                fontsize=14,
+                fontsize=10,
                 verticalalignment='top',
                 horizontalalignment='left',
                 bbox=props)

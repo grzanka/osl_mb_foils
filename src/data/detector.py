@@ -30,7 +30,6 @@ def img_for_circle_detection(data: npt.NDArray,
     if old_method:
         lower_threshold = np.percentile(data, 95)
         upper_threshold = np.max(data)
-    print(lower_threshold, upper_threshold)
 
     output[(data > lower_threshold) & (data < upper_threshold)] = 255
     output[np.isnan(data)] = 255
