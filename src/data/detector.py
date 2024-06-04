@@ -40,7 +40,7 @@ def img_for_circle_detection(data: npt.NDArray,
     return output
 
 
-def find_circle_hough_method(data: npt.NDArray) -> Circle:
+def find_circle_hough_method(data: npt.NDArray, min_radius : float = 100, max_radius: float = 200) -> Circle:
     logging.info(
         f'Detector circle not provided, calculating with Hough method')
     hough_results = cv2.HoughCircles(data,
@@ -49,8 +49,8 @@ def find_circle_hough_method(data: npt.NDArray) -> Circle:
                                      minDist=10000,
                                      param1=10,
                                      param2=0.9,
-                                     minRadius=100,
-                                     maxRadius=200)
+                                     minRadius=min_radius,
+                                     maxRadius=max_radius)
     logging.info(f'Hough method results {hough_results}')
     result_circle = Circle()
     if hough_results is None:
