@@ -1,11 +1,13 @@
+from dataclasses import dataclass, field
 import logging
-from typing import Optional, Tuple
+from pathlib import Path
+import re
 
 import cv2
 import numpy as np
 import numpy.typing as npt
 
-from src.data.analysis import Circle, median_filter, subtract_background, create_circular_mask
+from src.data.analysis import Circle, read_tiff_img, create_circular_mask
 
 
 def img_for_circle_detection(data: npt.NDArray,
@@ -40,7 +42,7 @@ def img_for_circle_detection(data: npt.NDArray,
     return output
 
 
-def find_circle_hough_method(data: npt.NDArray, min_radius : float = 100, max_radius: float = 200) -> Circle:
+def find_circle_hough_method(data: npt.NDArray, min_radius: float = 100, max_radius: float = 200) -> Circle:
     logging.info(
         f'Detector circle not provided, calculating with Hough method')
     hough_results = cv2.HoughCircles(data,
@@ -67,3 +69,50 @@ def find_circle_hough_method(data: npt.NDArray, min_radius : float = 100, max_ra
         )
         logging.info(f'Detected circle {result_circle}')
     return result_circle
+
+
+@dataclass(frozen=True)
+class DetectorImage:
+    image: np.ndarray
+    path: Path
+
+    @property
+    def init_circle(self) -> Circle:
+        return Circle(x=self.image.shape[0]//2, y=self.image.shape[1]//2, r=40)
+
+@dataclass(frozen=True)
+class DetectorData:
+    raw: DetectorImage
+    lv: DetectorImage
+    det_no: int
+    circle: Circle = field(default=Circle())
+
+@dataclass(frozen=True)
+class DetectorDataCollection:
+    path: Path
+    data: dict[int, DetectorData] = field(default_factory=dict)
+
+    def __post_init__(self):
+        if not self.data:
+            self._load_data()
+
+    def _load_data(self):
+        for file_path in sorted(self.path.iterdir()):
+            if file_path.name.endswith('lv'):
+                # get detector data
+                det_id = re.findall(r'\d+', file_path.name)[0]
+                det_no = int(det_id)
+                # live view images
+                lv_path = next(file_path.glob('**/*tif'))
+                lv_data = read_tiff_img(lv_path, border_px=0)
+                lv_image = DetectorImage(image=lv_data, path=lv_path)
+                # raw data images
+                try:
+                    raw_path = next((self.path / det_id).glob('**/*tif'))
+                    raw_data = read_tiff_img(raw_path, border_px=0)
+                    raw_image = DetectorImage(image=raw_data, path=raw_path)
+                    det_data = DetectorData(raw=raw_image, lv=lv_image, det_no=det_no)
+                    self.data[det_no] = det_data
+                    print(f"{det_no} ", end='')
+                except StopIteration:
+                    print(f"missing_{det_no} ", end='')
