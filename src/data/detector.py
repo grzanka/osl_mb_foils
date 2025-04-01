@@ -1,3 +1,4 @@
+from copy import deepcopy
 from dataclasses import dataclass, field
 import logging
 from pathlib import Path
@@ -6,6 +7,7 @@ import re
 import cv2
 import numpy as np
 import numpy.typing as npt
+from scipy.ndimage import center_of_mass
 
 from src.data.analysis import Circle, read_tiff_img, create_circular_mask
 
@@ -127,3 +129,12 @@ class DetectorDataCollection:
                     print(f"{det_no} ", end='')
                 except StopIteration:
                     print(f"missing_{det_no} ", end='')
+
+
+def center_of_mass_det(data: DetectorData) -> tuple[float, float]:
+    detector_region = deepcopy(data.raw.image)
+    circle_smaller_than_det = Circle(x=data.circle.x, y=data.circle.y, r=data.circle.r * 0.95)
+    mask_circle = create_circular_mask(img=detector_region, circle_px=circle_smaller_than_det)
+    detector_region[~mask_circle] = 0
+    cm = center_of_mass(detector_region)
+    return cm

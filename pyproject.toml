@@ -28,3 +28,7 @@ ipykernel = "^6.29.2"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+# configure flake8 for lines of length 160
+[tool.flake8]
+max-line-length = 160
