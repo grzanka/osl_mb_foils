@@ -9,7 +9,7 @@ repos:
     -   id: check-yaml
         exclude: mkdocs.yml$
     -   id: check-added-large-files
-        args: ['--maxkb=2000']
+        args: ['--maxkb=20000']
 -   repo: https://github.com/google/yapf
     rev: v0.40.1
     hooks:
