@@ -23,7 +23,7 @@ tqdm = "^4.67.1"
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^3.6.2"
 yapf = "^0.40.2"
-ipykernel = "^6.29.2"
+ipykernel = "^6.29.5"
 
 [build-system]
 requires = ["poetry-core"]
