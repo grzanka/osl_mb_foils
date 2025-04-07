@@ -21,7 +21,7 @@ tifffile = {extras = ["all"], version = "^2024.5.22"}
 tqdm = "^4.67.1"
 
 [tool.poetry.group.dev.dependencies]
-pre-commit = "^3.6.2"
+pre-commit = "^4.2.0"
 yapf = "^0.40.2"
 ipykernel = "^6.29.5"
 
