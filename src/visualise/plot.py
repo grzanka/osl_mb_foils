@@ -48,6 +48,7 @@ def plot_data(data: npt.NDArray,
               path: str = '',
               circle_px: Optional[Circle] = None,
               details: bool = False,
+              describe: bool = True,
               clip: bool = True,
               figsize=(8, 10)):
     circle = circle_px
@@ -84,26 +85,27 @@ def plot_data(data: npt.NDArray,
     # these are matplotlib.patch.Patch properties
     props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
 
-    if not details:
-        # place a text box for circular area
-        ax.text(0.15,
-                0.95,
-                text_for_circle,
-                transform=ax.transAxes,
-                fontsize=10,
-                verticalalignment='top',
-                horizontalalignment='left',
-                bbox=props)
+    if describe:
+        if not details:
+            # place a text box for circular area
+            ax.text(0.15,
+                    0.95,
+                    text_for_circle,
+                    transform=ax.transAxes,
+                    fontsize=10,
+                    verticalalignment='top',
+                    horizontalalignment='left',
+                    bbox=props)
 
-        # place a text box for image area
-        ax.text(0.65,
-                0.95,
-                text_for_image,
-                transform=ax.transAxes,
-                fontsize=10,
-                verticalalignment='top',
-                horizontalalignment='left',
-                bbox=props)
+            # place a text box for image area
+            ax.text(0.65,
+                    0.95,
+                    text_for_image,
+                    transform=ax.transAxes,
+                    fontsize=10,
+                    verticalalignment='top',
+                    horizontalalignment='left',
+                    bbox=props)
 
     ax.add_artist(
         plt.Circle(xy=(circle.x, circle.y),
@@ -225,13 +227,14 @@ def plot_data(data: npt.NDArray,
 
 
 def plot_data_simple(data: npt.NDArray,
-              path: str = '',
-              circle_px: Optional[Circle] = None,
-              clip: bool = True,
-              clip_percentile : float = 95.,
-              vmin: Optional[float] = None,
-              vmax: Optional[float] = None,
-              figsize=(8, 10)):
+                     path: str = '',
+                     circle_px: Optional[Circle] = None,
+                     clip: bool = True,
+                     clip_percentile: float = 95.,
+                     vmin: Optional[float] = None,
+                     vmax: Optional[float] = None,
+                     describe: bool = True,
+                     figsize=(8, 10)):
     circle = circle_px
     if not circle:
         circle = Circle(x=data.shape[0] / 2, y=data.shape[0] / 2, r=250)
@@ -243,23 +246,30 @@ def plot_data_simple(data: npt.NDArray,
     if clip:
         data_for_plotting = np.clip(data,
                                     a_min=None,
-                                    a_max=np.nanpercentile(a=data, q=clip_percentile))
-    pos0 = ax.imshow(data_for_plotting, cmap='terrain', interpolation='None', vmin=vmin, vmax=vmax)
+                                    a_max=np.nanpercentile(a=data,
+                                                           q=clip_percentile))
+    pos0 = ax.imshow(data_for_plotting,
+                     cmap='terrain',
+                     interpolation='None',
+                     vmin=vmin,
+                     vmax=vmax)
     plt.colorbar(pos0, ax=ax, shrink=0.4)
 
     mask_for_circle = create_circular_mask(img=data, circle_px=circle)
-    title_for_circle = f'circle at {circle.x},{circle.y}\n     radius {circle.r:.1f} : \n'
-    text_for_circle = label_text(data=data[mask_for_circle],
-                                 title=title_for_circle)
 
-    title_for_image = f'full image : \n\n'
-    text_for_image = label_text(data=data, title=title_for_image)
+    if describe:
+        title_for_circle = f'circle at {circle.x},{circle.y}\n     radius {circle.r:.1f} : \n'
+        text_for_circle = label_text(data=data[mask_for_circle],
+                                     title=title_for_circle)
 
-    # these are matplotlib.patch.Patch properties
-    props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+        title_for_image = f'full image : \n\n'
+        text_for_image = label_text(data=data, title=title_for_image)
+
+        # these are matplotlib.patch.Patch properties
+        props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
 
         # place a text box for circular area
-    ax.text(0.15,
+        ax.text(0.15,
                 0.95,
                 text_for_circle,
                 transform=ax.transAxes,
@@ -269,7 +279,7 @@ def plot_data_simple(data: npt.NDArray,
                 bbox=props)
 
         # place a text box for image area
-    ax.text(0.65,
+        ax.text(0.65,
                 0.95,
                 text_for_image,
                 transform=ax.transAxes,
@@ -284,7 +294,7 @@ def plot_data_simple(data: npt.NDArray,
                    color='black',
                    fill=False,
                    transform=ax.transData))
-    
+
     if path:
         fig.savefig(path)
 
