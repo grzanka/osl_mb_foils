@@ -35,7 +35,6 @@ export PATH="$HOME/.local/bin:$PATH"
 3) Create and use the project virtual environment, then install deps
 
 ```bash
-# uses local in-project virtualenv as configured in poetry.toml
 poetry install
 ```
 
@@ -48,24 +47,20 @@ Poetry virtual environment location and removal
 By default this project configures Poetry to create an in-project virtual environment (a `.venv` folder inside the repo). To remove and rebuild the environment:
 
 ```bash
-# remove the in-project virtualenv
 rm -rf .venv
 ```
 
 ```bash
-# re-create environment
 poetry install
 ```
 
 4) Quick checks
 
 ```bash
-# run a basic Python import check
 python -c "import numpy, pandas, matplotlib, scipy, cv2, tables; print('ok')"
 ```
 
 ```bash
-# run a small script (example)
 python -c "from src import analysis; print('analysis module loaded:', hasattr(analysis, '__file__'))"
 ```
 
@@ -94,7 +89,6 @@ export PATH="$HOME/.local/bin:$PATH"
 3) Create and use the project virtual environment, then install deps
 
 ```bash
-# uses local in-project virtualenv as configured in poetry.toml
 poetry install
 ```
 
@@ -105,12 +99,10 @@ poetry shell
 4) Quick checks
 
 ```bash
-# run a basic Python import check
 python -c "import numpy, pandas, matplotlib, scipy, cv2, tables; print('ok')"
 ```
 
 ```bash
-# run a small script (example)
 python -c "from src import analysis; print('analysis module loaded:', hasattr(analysis, '__file__'))"
 ```
 
