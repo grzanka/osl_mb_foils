@@ -993,14 +993,14 @@ files = [
 
 [[package]]
 name = "lmfit"
-version = "1.3.3"
+version = "1.3.4"
 description = "Least-Squares Minimization with Bounds and Constraints"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "lmfit-1.3.3-py3-none-any.whl", hash = "sha256:a9e9ec7d0d0ec962cc6c078ad1ec6c8311d3ac0e5f0947a00a91f5509dacc2b2"},
-    {file = "lmfit-1.3.3.tar.gz", hash = "sha256:73321e6b881f2f686235721a7dfc02af6bb0f030a25efeb66638f62b1c6053a1"},
+    {file = "lmfit-1.3.4-py3-none-any.whl", hash = "sha256:afce1593b42324d37ae2908249b0c55445e2f4c1a0474ff706a8e2f7b5d949fa"},
+    {file = "lmfit-1.3.4.tar.gz", hash = "sha256:3c22c28c43f717f6c5b4a3bd81e893a2149739c26a592c046f2e33c23cfbe497"},
 ]
 
 [package.dependencies]
@@ -2680,4 +2680,4 @@ test = ["coverage (>=7.10)", "hypothesis", "mypy", "numpydoc", "packaging", "pyt
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "9fafc622e0e27e3ba6ace3442d973adc1ac6c4ab640b6cb6277972a774fcc813"
+content-hash = "3c7ded465a958dfe62f8895dd5cab481349168949a70266f0ef5acd23de7a898"
