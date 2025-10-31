@@ -54,7 +54,9 @@ class Circle:
         return result
 
 
-def read_tiff_img(file_path: Path, border_px: int = 0) -> npt.NDArray:
+def read_tiff_img(file_path: Path,
+                  border_px: int = 0,
+                  cut_px: int = 0) -> npt.NDArray:
     '''
     read tif image and add a border filled with NaN
     new image will have bigger size (by 2 x border_px in each direction) than original tiff
@@ -71,6 +73,9 @@ def read_tiff_img(file_path: Path, border_px: int = 0) -> npt.NDArray:
         raw_img = raw_img.astype('float32')
         raw_img = np.pad(raw_img, pad_width=border_px, constant_values=np.nan)
         logging.info(f'Padded image shape: {raw_img.shape}')
+    if cut_px > 0:
+        raw_img = raw_img[cut_px:-cut_px, cut_px:-cut_px]
+        logging.info(f'Cut image shape: {raw_img.shape}')
     return raw_img
 
 

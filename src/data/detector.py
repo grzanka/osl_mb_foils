@@ -95,16 +95,22 @@ class DetectorData:
     circle: Circle = field(default=Circle())
 
 
+from dataclasses import dataclass, field, InitVar
+from pathlib import Path
+
+
 @dataclass(frozen=True)
 class DetectorDataCollection:
     path: Path
+    border_px: InitVar[int] = 0
+    cut_px: InitVar[int] = 0
     data: dict[int, DetectorData] = field(default_factory=dict)
 
-    def __post_init__(self):
+    def __post_init__(self, border_px: int, cut_px: int):
         if not self.data:
-            self._load_data()
+            self._load_data(border_px, cut_px)
 
-    def _load_data(self):
+    def _load_data(self, border_px: int, cut_px: int):
         for file_path in sorted(self.path.iterdir()):
             if file_path.name.endswith('lv'):
                 # get detector data
@@ -115,12 +121,16 @@ class DetectorDataCollection:
                 det_no = int(det_id)
                 # live view images
                 lv_path = next(file_path.glob('**/*tif'))
-                lv_data = read_tiff_img(lv_path, border_px=0)
+                lv_data = read_tiff_img(lv_path,
+                                        border_px=border_px,
+                                        cut_px=cut_px)
                 lv_image = DetectorImage(image=lv_data, path=lv_path)
                 # raw data images
                 try:
                     raw_path = next((self.path / det_id).glob('**/*tif'))
-                    raw_data = read_tiff_img(raw_path, border_px=0)
+                    raw_data = read_tiff_img(raw_path,
+                                             border_px=border_px,
+                                             cut_px=cut_px)
                     raw_image = DetectorImage(image=raw_data, path=raw_path)
                     det_data = DetectorData(raw=raw_image,
                                             lv=lv_image,
@@ -133,8 +143,11 @@ class DetectorDataCollection:
 
 def center_of_mass_det(data: DetectorData) -> tuple[float, float]:
     detector_region = deepcopy(data.raw.image)
-    circle_smaller_than_det = Circle(x=data.circle.x, y=data.circle.y, r=data.circle.r * 0.95)
-    mask_circle = create_circular_mask(img=detector_region, circle_px=circle_smaller_than_det)
+    circle_smaller_than_det = Circle(x=data.circle.x,
+                                     y=data.circle.y,
+                                     r=data.circle.r * 0.95)
+    mask_circle = create_circular_mask(img=detector_region,
+                                       circle_px=circle_smaller_than_det)
     detector_region[~mask_circle] = 0
     cm = center_of_mass(detector_region)
     return cm
