@@ -1,0 +1,10 @@
+name: osl-mb-foils
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pandas
+  - matplotlib
+  - scipy
+  - pytables
+  - ipykernel
