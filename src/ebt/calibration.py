@@ -60,5 +60,5 @@ class Calibration:
 
 
 # Predefined calibration curves
-ebt3_proton_calib_20Gy = Calibration(a1=9.62189, a3=78.75125)
+ebt3_proton_calib_20Gy = Calibration(a0=0, a1=7.94, a2=21.39, a3=70.33)
 """EBT3 proton calibration for 20 Gy dose range."""
