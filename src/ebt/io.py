@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Optional, Union, List, Tuple
 
 import numpy as np
 import numpy.typing as npt
@@ -13,7 +13,7 @@ DEFAULT_DPI = 150.0
 """Default DPI fallback value if not found in TIFF metadata."""
 
 
-def get_tiff_dpi(filepath: Path | str) -> float:
+def get_tiff_dpi(filepath: Union[Path, str]) -> float:
     """Extract DPI from TIFF file metadata.
     
     Parameters
@@ -153,3 +153,88 @@ def load_tiff_to_filedata(
         dose_full=dose_full,
         shape=raw_image.shape
     )
+
+
+@dataclass
+class FilePairData:
+    """Container for signal-background file pair data.
+    
+    Parameters
+    ----------
+    signal_path : Path
+        Path to the signal (dose) TIFF file
+    background_path : Path
+        Path to the background TIFF file
+    dpi : float
+        DPI resolution of the scan
+    px_to_mm : float
+        Pixel to mm conversion factor
+    signal_raw : np.ndarray
+        Raw RGB image array from signal file
+    background_raw : np.ndarray
+        Raw RGB image array from background file
+    dose_full : np.ndarray
+        Full dose distribution array (computed from signal)
+    background_dose_full : np.ndarray
+        Dose computed from background (should be ~0)
+    shape : tuple
+        Shape of the raw images
+    signal_cropped : np.ndarray, optional
+        Cropped signal raw image (red channel)
+    background_cropped : np.ndarray, optional
+        Cropped background raw image (red channel)
+    dose_cropped : np.ndarray, optional
+        Cropped dose array
+    background_dose_cropped : np.ndarray, optional
+        Cropped background dose array
+    crop_bbox : tuple, optional
+        Bounding box (y_min, y_max, x_min, x_max)
+    """
+    signal_path: Path
+    background_path: Path
+    dpi: float
+    px_to_mm: float
+    signal_raw: npt.NDArray
+    background_raw: npt.NDArray
+    dose_full: npt.NDArray
+    background_dose_full: npt.NDArray
+    shape: tuple
+    signal_cropped: Optional[npt.NDArray] = field(default=None)
+    background_cropped: Optional[npt.NDArray] = field(default=None)
+    dose_cropped: Optional[npt.NDArray] = field(default=None)
+    background_dose_cropped: Optional[npt.NDArray] = field(default=None)
+    crop_bbox: Optional[tuple] = field(default=None)
+    
+    def __repr__(self) -> str:
+        return f"FilePairData(signal='{self.signal_path.name}', bg='{self.background_path.name}', dpi={self.dpi:.1f})"
+    
+    @property
+    def stem(self) -> str:
+        """Signal file stem."""
+        return self.signal_path.stem
+    
+    @property
+    def width_mm(self) -> float:
+        """Width of the image in mm."""
+        return self.shape[1] * self.px_to_mm
+    
+    @property
+    def height_mm(self) -> float:
+        """Height of the image in mm."""
+        return self.shape[0] * self.px_to_mm
+
+
+def get_red_channel(image: npt.NDArray) -> npt.NDArray:
+    """Extract red channel from RGB image.
+    
+    Parameters
+    ----------
+    image : np.ndarray
+        RGB image with shape (height, width, 3)
+        
+    Returns
+    -------
+    np.ndarray
+        Red channel with shape (height, width)
+    """
+    return image[:, :, 0].astype(np.float64)

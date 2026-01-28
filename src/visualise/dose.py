@@ -11,7 +11,7 @@ from matplotlib.axes import Axes
 
 
 def create_dose_colormap(white_threshold_percent: float = 1.0) -> LinearSegmentedColormap:
-    """Create a custom colormap for dose visualization.
+    """Create a custom colormap for dose visualization (positive values only).
     
     The colormap transitions: white -> green (50%) -> red (100%)
     with a white region for low doses.
@@ -42,6 +42,60 @@ def create_dose_colormap(white_threshold_percent: float = 1.0) -> LinearSegmente
                   (1.0, 0.0, 0.0)]
     }
     return LinearSegmentedColormap('custom_dose', cmap_dict)
+
+
+def create_symmetric_dose_colormap(white_threshold_percent: float = 1.0) -> LinearSegmentedColormap:
+    """Create a symmetric colormap for dose visualization with negative values.
+    
+    The colormap transitions: blue (min negative) -> white (zero) -> green (50% max) -> red (max)
+    with a white region around zero.
+    
+    Parameters
+    ----------
+    white_threshold_percent : float
+        Percentage of |vmax| around zero that appears white. Default 1.0%.
+        
+    Returns
+    -------
+    LinearSegmentedColormap
+        Custom symmetric colormap for dose visualization
+        
+    Notes
+    -----
+    Use with vmin=-vmax for symmetric scaling, or set vmin/vmax appropriately.
+    The colormap is designed for data normalized to [-1, 1] range:
+    - -1.0 (min negative): blue
+    - -threshold to +threshold: white  
+    - 0.5 (halfway to max): green
+    - 1.0 (max): red
+    """
+    # For symmetric colormap, 0.5 is the center (zero)
+    # threshold_frac is percentage of HALF the range
+    threshold_frac = white_threshold_percent / 100.0
+    
+    # Positions in [0, 1] for symmetric colormap centered at 0.5
+    # 0.0 = vmin (negative), 0.5 = 0, 1.0 = vmax (positive)
+    white_low = 0.5 - threshold_frac / 2
+    white_high = 0.5 + threshold_frac / 2
+    
+    cmap_dict = {
+        'red':   [(0.0, 0.0, 0.0),      # blue at min
+                  (white_low, 1.0, 1.0), # white start
+                  (white_high, 1.0, 1.0),# white end
+                  (0.75, 0.0, 0.0),      # green at 50% of positive
+                  (1.0, 1.0, 1.0)],      # red at max
+        'green': [(0.0, 0.0, 0.0),      # blue at min
+                  (white_low, 1.0, 1.0), # white start
+                  (white_high, 1.0, 1.0),# white end
+                  (0.75, 0.5, 0.5),      # green at 50% of positive
+                  (1.0, 0.0, 0.0)],      # red at max
+        'blue':  [(0.0, 1.0, 1.0),      # blue at min
+                  (white_low, 1.0, 1.0), # white start
+                  (white_high, 1.0, 1.0),# white end
+                  (0.75, 0.0, 0.0),      # green at 50% of positive
+                  (1.0, 0.0, 0.0)]       # red at max
+    }
+    return LinearSegmentedColormap('symmetric_dose', cmap_dict)
 
 
 def plot_2d_dose(
@@ -338,4 +392,131 @@ def plot_profile_comparison(
     ax.legend(loc='best', fontsize=10)
     
     plt.tight_layout()
+    return fig
+
+
+def plot_raw_signal_comparison(
+    signal_image: npt.NDArray,
+    background_image: npt.NDArray,
+    px_to_mm: float,
+    title: str = 'Raw Signal Comparison',
+    figsize: tuple = (14, 6)
+) -> Figure:
+    """Plot raw signal and background images side by side.
+    
+    Parameters
+    ----------
+    signal_image : np.ndarray
+        Raw signal image (red channel, 2D array)
+    background_image : np.ndarray
+        Raw background image (red channel, 2D array)
+    px_to_mm : float
+        Pixel to mm conversion factor
+    title : str
+        Overall figure title
+    figsize : tuple
+        Figure size (width, height) in inches
+        
+    Returns
+    -------
+    fig : Figure
+        Matplotlib figure with 2 subplots
+    """
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=figsize)
+    
+    # Signal image
+    height, width = signal_image.shape
+    extent = [0, width * px_to_mm, height * px_to_mm, 0]
+    
+    im1 = ax1.imshow(signal_image, cmap='gray', extent=extent, aspect='equal')
+    ax1.set_xlabel('X [mm]')
+    ax1.set_ylabel('Y [mm]')
+    ax1.set_title('Signal (Dose Foil) - Red Channel')
+    fig.colorbar(im1, ax=ax1, label='Intensity', fraction=0.046)
+    
+    # Background image
+    height_bg, width_bg = background_image.shape
+    extent_bg = [0, width_bg * px_to_mm, height_bg * px_to_mm, 0]
+    
+    im2 = ax2.imshow(background_image, cmap='gray', extent=extent_bg, aspect='equal')
+    ax2.set_xlabel('X [mm]')
+    ax2.set_ylabel('Y [mm]')
+    ax2.set_title('Background Foil - Red Channel')
+    fig.colorbar(im2, ax=ax2, label='Intensity', fraction=0.046)
+    
+    if title:
+        fig.suptitle(title, fontsize=14, fontweight='bold')
+    plt.tight_layout()
+    
+    return fig
+
+
+def plot_dose_with_background(
+    dose_array: npt.NDArray,
+    background_dose_array: npt.NDArray,
+    px_to_mm: float,
+    title: str = 'Dose Comparison',
+    white_threshold_percent: float = 1.0,
+    figsize: tuple = (14, 6)
+) -> Figure:
+    """Plot dose from signal and background foils side by side.
+    
+    Parameters
+    ----------
+    dose_array : np.ndarray
+        Dose from signal foil (2D array)
+    background_dose_array : np.ndarray
+        Dose from background foil (2D array, should be ~0)
+    px_to_mm : float
+        Pixel to mm conversion factor
+    title : str
+        Overall figure title
+    white_threshold_percent : float
+        Percentage around zero that appears white
+    figsize : tuple
+        Figure size
+        
+    Returns
+    -------
+    fig : Figure
+        Matplotlib figure with 2 subplots
+    """
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=figsize)
+    
+    # Signal dose - use positive colormap
+    height, width = dose_array.shape
+    extent = [0, width * px_to_mm, height * px_to_mm, 0]
+    
+    vmax_signal = np.percentile(dose_array[dose_array > 0], 99) if (dose_array > 0).any() else dose_array.max()
+    cmap_signal = create_dose_colormap(white_threshold_percent)
+    
+    im1 = ax1.imshow(dose_array, cmap=cmap_signal, vmin=0, vmax=vmax_signal,
+                     extent=extent, aspect='equal')
+    ax1.set_xlabel('X [mm]')
+    ax1.set_ylabel('Y [mm]')
+    ax1.set_title('Dose (Signal Foil)')
+    fig.colorbar(im1, ax=ax1, label='Dose [Gy]', fraction=0.046)
+    
+    # Background dose - use symmetric colormap for negative and positive values
+    height_bg, width_bg = background_dose_array.shape
+    extent_bg = [0, width_bg * px_to_mm, height_bg * px_to_mm, 0]
+    
+    # Determine symmetric scale
+    vmax_bg = max(abs(background_dose_array.min()), abs(background_dose_array.max()))
+    if vmax_bg < 0.1:
+        vmax_bg = 0.1  # Minimum scale
+    
+    cmap_bg = create_symmetric_dose_colormap(white_threshold_percent)
+    
+    im2 = ax2.imshow(background_dose_array, cmap=cmap_bg, vmin=-vmax_bg, vmax=vmax_bg,
+                     extent=extent_bg, aspect='equal')
+    ax2.set_xlabel('X [mm]')
+    ax2.set_ylabel('Y [mm]')
+    ax2.set_title('Dose (Background Foil)')
+    fig.colorbar(im2, ax=ax2, label='Dose [Gy]', fraction=0.046)
+    
+    if title:
+        fig.suptitle(title, fontsize=14, fontweight='bold')
+    plt.tight_layout()
+    
     return fig
