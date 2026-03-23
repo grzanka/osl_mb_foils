@@ -5,7 +5,7 @@ input_pkl: mbo_aic144_processed.pkl
 left_foil_id: 1
 right_foil_id: 2
 edge_threshold: 400.0
-edge_x_positions: [140, 160, 180, 200, 220, 240, 260]
+edge_x_positions_mm: [10.4, 11.8, 13.3, 14.8, 16.3, 17.8, 19.2]
 edge_stripe_width: 10
 crop_size: 300
 merge_margin: 0

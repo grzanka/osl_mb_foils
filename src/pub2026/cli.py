@@ -39,6 +39,7 @@ _MODULE_MAP = {
     'mbo_explore': 'mbo',
     'mbo_match': 'mbo',
     'mbo_comparison': 'mbo',
+    'mbo_raw_survey': 'mbo',
     'comparison_facility': 'comparisons',
     'comparison_summary': 'comparisons',
 }
@@ -66,10 +67,10 @@ def _run_pipeline(config_path: str, output_dir: str):
     if config_type == 'mc_depth_validation':
         cfg = load_config(config_path, 'mc_depth_validation')
         from src.pub2026.mc.depth_validation import validate_depth_dose
-        validate_depth_dose(cfg,
-                            output_dir=data_dir,
-                            pdf_path=str(
-                                Path(reports_dir) / "mc_depth_validation.pdf"))
+        validate_depth_dose(
+            cfg,
+            output_dir=data_dir,
+            pdf_path=str(Path(reports_dir) / "1_mc_depth_validation.pdf"))
 
     elif config_type == 'mc_wedge':
         cfg = load_config(config_path, 'mc_wedge')
@@ -77,7 +78,7 @@ def _run_pipeline(config_path: str, output_dir: str):
         process_wedge_profile(
             cfg,
             output_dir=data_dir,
-            pdf_path=str(Path(reports_dir) / f"mc_wedge_{cfg.facility}.pdf"))
+            pdf_path=str(Path(reports_dir) / f"2_mc_wedge_{cfg.facility}.pdf"))
 
     elif config_type == 'mc_comparison':
         cfg = load_config(config_path, 'mc_comparison')
@@ -85,7 +86,7 @@ def _run_pipeline(config_path: str, output_dir: str):
         compare_mc_profiles(cfg,
                             output_dir=data_dir,
                             pdf_path=str(
-                                Path(reports_dir) / "mc_comparison.pdf"))
+                                Path(reports_dir) / "3_mc_comparison.pdf"))
 
     elif config_type == 'ebt_analysis':
         cfg = load_config(config_path, 'ebt_analysis')
@@ -94,14 +95,14 @@ def _run_pipeline(config_path: str, output_dir: str):
                     output_dir=data_dir,
                     pdf_path=str(
                         Path(reports_dir) /
-                        f"ebt_analysis_{cfg.facility}.pdf"))
+                        f"1_ebt_analysis_{cfg.facility}.pdf"))
 
     elif config_type == 'ebt_comparison':
         cfg = load_config(config_path, 'ebt_comparison')
         from src.pub2026.ebt.comparison import compare_ebt
         compare_ebt(cfg,
                     output_dir=data_dir,
-                    pdf_path=str(Path(reports_dir) / "ebt_comparison.pdf"))
+                    pdf_path=str(Path(reports_dir) / "2_ebt_comparison.pdf"))
 
     elif config_type == 'mbo_explore':
         cfg = load_config(config_path, 'mbo_explore')
@@ -109,7 +110,8 @@ def _run_pipeline(config_path: str, output_dir: str):
         explore_mbo(cfg,
                     output_dir=data_dir,
                     pdf_path=str(
-                        Path(reports_dir) / f"mbo_explore_{cfg.facility}.pdf"))
+                        Path(reports_dir) /
+                        f"1_mbo_explore_{cfg.facility}.pdf"))
 
     elif config_type == 'mbo_match':
         cfg = load_config(config_path, 'mbo_match')
@@ -119,7 +121,7 @@ def _run_pipeline(config_path: str, output_dir: str):
             output_dir=data_dir,
             pdf_path=str(
                 Path(reports_dir) /
-                f"mbo_match_{cfg.facility}_{cfg.left_foil_id}_{cfg.right_foil_id}.pdf"
+                f"2_mbo_match_{cfg.facility}_{cfg.left_foil_id}_{cfg.right_foil_id}.pdf"
             ))
 
     elif config_type == 'mbo_comparison':
@@ -127,15 +129,25 @@ def _run_pipeline(config_path: str, output_dir: str):
         from src.pub2026.mbo.comparison import compare_mbo
         compare_mbo(cfg,
                     output_dir=data_dir,
-                    pdf_path=str(Path(reports_dir) / "mbo_comparison.pdf"))
+                    pdf_path=str(Path(reports_dir) / "3_mbo_comparison.pdf"))
+
+    elif config_type == 'mbo_raw_survey':
+        cfg = load_config(config_path, 'mbo_raw_survey')
+        from src.pub2026.mbo.survey_raw import survey_raw_mbo
+        survey_raw_mbo(cfg,
+                       output_dir=data_dir,
+                       pdf_path=str(
+                           Path(reports_dir) /
+                           f"4_mbo_raw_survey_{cfg.facility}.pdf"))
 
     elif config_type == 'comparison_facility':
         cfg = load_config(config_path, 'comparison_facility')
         from src.pub2026.comparisons.facility import compare_facility
-        compare_facility(
-            cfg,
-            output_dir=data_dir,
-            pdf_path=str(Path(reports_dir) / f"comparison_{cfg.facility}.pdf"))
+        compare_facility(cfg,
+                         output_dir=data_dir,
+                         pdf_path=str(
+                             Path(reports_dir) /
+                             f"1_comparison_{cfg.facility}.pdf"))
 
     elif config_type == 'comparison_summary':
         cfg = load_config(config_path, 'comparison_summary')
@@ -143,8 +155,7 @@ def _run_pipeline(config_path: str, output_dir: str):
         compare_summary(cfg,
                         output_dir=data_dir,
                         pdf_path=str(
-                            Path(reports_dir) / "comparison_summary.pdf"))
-
+                            Path(reports_dir) / "2_comparison_summary.pdf"))
     else:
         print(f"Unknown config type: {config_type!r}")
         print(f"Supported types: {', '.join(CONFIG_CLASSES.keys())}")

@@ -135,12 +135,17 @@ def explore_mbo(config: MBOExploreConfig,
     if pdf_path is None:
         pdf_path = str(output_dir_path / f"mbo_explore_{config.facility}.pdf")
 
-    data_path = Path(config.data_dir)
+    data_path = Path(config.data_dir).resolve()
     bg_path = data_path / "tlo"
 
     report = PDFReport(pdf_path,
                        title=f"MBO Exploration: {config.facility.upper()}",
                        config_path=str(data_path))
+
+    report.add_text(
+        f"Input TIFF directory:\n{data_path}\n\n"
+        f"Background directory:\n{bg_path}",
+        title="Data Source Paths")
 
     # Load data
     proton_data = DetectorDataCollection(path=data_path, cut_px=config.cut_px)

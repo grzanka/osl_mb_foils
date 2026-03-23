@@ -117,6 +117,10 @@ class PDFReport:
         """
         self._page_count += 1
 
+        # Add major grid to all axes
+        for ax in fig.get_axes():
+            ax.grid(True, which='major', alpha=0.3)
+
         if caption:
             fig.text(0.5,
                      0.02,

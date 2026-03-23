@@ -35,14 +35,17 @@ src/pub2026/
 # Install dependencies
 poetry install
 
+# Show available commands
+poetry run python -m src.pub2026.cli --help
+
 # Run a single analysis
-python -m src.pub2026.cli run src/pub2026/mc/config/depth_validation_ccb.yaml
+poetry run python -m src.pub2026.cli run src/pub2026/mc/config/depth_validation_ccb.yaml
 
 # Run all analyses in standard order
-python -m src.pub2026.cli run-all
+poetry run python -m src.pub2026.cli run-all
 
 # Specify output directory
-python -m src.pub2026.cli run-all --output-dir results/pub2026
+poetry run python -m src.pub2026.cli run-all --output-dir results/pub2026
 ```
 
 ## Configuration

@@ -248,7 +248,7 @@ def match_mbo(config: MBOMatchConfig,
     """
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
-    data_path = Path(config.data_dir)
+    data_path = Path(config.data_dir).resolve()
 
     if pdf_path is None:
         pdf_path = str(
@@ -261,6 +261,11 @@ def match_mbo(config: MBOMatchConfig,
         title=
         f"MBO Match: {config.facility.upper()} foils {config.left_foil_id}&{config.right_foil_id}",
         config_path=str(data_path))
+
+    report.add_text(
+        f"Input TIFF directory (from explore):\n{data_path}\n\n"
+        f"Input pickle: {config.input_pkl or f'mbo_{config.facility}_processed.pkl'}",
+        title="Data Source Paths")
 
     cmap = _white_green_red_cmap(config.white_threshold)
     px = config.pixel_size_mm
@@ -292,7 +297,7 @@ def match_mbo(config: MBOMatchConfig,
          f'Right foil {config.right_foil_id}'),
     ]:
         ext = [0, img.shape[1] * px, img.shape[0] * px, 0]
-        ax.imshow(img, cmap=cmap, vmin=0, vmax=config.vmax, extent=ext)
+        im = ax.imshow(img, cmap=cmap, vmin=0, vmax=config.vmax, extent=ext)
         ax.add_patch(
             plt.Circle((circ.x * px, circ.y * px),
                        circ.r * px,
@@ -300,17 +305,21 @@ def match_mbo(config: MBOMatchConfig,
                        fill=False,
                        lw=1))
         ax.set(title=lbl, xlabel='X [mm]', ylabel='Y [mm]')
+        fig_raw.colorbar(im,
+                         ax=ax,
+                         fraction=0.046,
+                         pad=0.04,
+                         label='Intensity')
     fig_raw.tight_layout()
     report.add_figure(fig_raw,
                       caption='Step 1: Raw foils (flipped) with Hough circles',
                       source_paths=[str(data_path)])
 
     # 2. Edge detection & line fitting ---------------------------------------
-    left_xr = find_edge_crossings(left_img, config.edge_x_positions,
-                                  config.edge_threshold,
+    edge_x_px = [int(round(x_mm / px)) for x_mm in config.edge_x_positions_mm]
+    left_xr = find_edge_crossings(left_img, edge_x_px, config.edge_threshold,
                                   config.edge_stripe_width)
-    right_xr = find_edge_crossings(right_img, config.edge_x_positions,
-                                   config.edge_threshold,
+    right_xr = find_edge_crossings(right_img, edge_x_px, config.edge_threshold,
                                    config.edge_stripe_width)
     left_line = fit_edge_line(left_xr, robust=True)
     right_line = fit_edge_line(right_xr, robust=True)
@@ -324,7 +333,7 @@ def match_mbo(config: MBOMatchConfig,
          f'Right foil {config.right_foil_id}'),
     ]:
         ext = [0, img.shape[1] * px, img.shape[0] * px, 0]
-        ax.imshow(img, cmap=cmap, vmin=0, vmax=config.vmax, extent=ext)
+        im = ax.imshow(img, cmap=cmap, vmin=0, vmax=config.vmax, extent=ext)
         for pt_x, pt_y in xr:
             if pt_y is not None:
                 ax.plot(pt_x * px, pt_y * px, 'r+', ms=8, mew=2)
@@ -335,6 +344,11 @@ def match_mbo(config: MBOMatchConfig,
         ax.set(title=f'{lbl}\nEdge angle: {line.slope_deg:.2f}°',
                xlabel='X [mm]',
                ylabel='Y [mm]')
+        fig_edge.colorbar(im,
+                          ax=ax,
+                          fraction=0.046,
+                          pad=0.04,
+                          label='Intensity')
     fig_edge.tight_layout()
     report.add_figure(fig_edge,
                       caption='Step 2: Edge detection and line fitting',
@@ -357,7 +371,7 @@ def match_mbo(config: MBOMatchConfig,
         (axes_rot[1], right_rot, right_c_rot, f'Right (rot {ra:.1f}°)', ra),
     ]:
         ext = [0, img.shape[1] * px, img.shape[0] * px, 0]
-        ax.imshow(img, cmap=cmap, vmin=0, vmax=config.vmax, extent=ext)
+        im = ax.imshow(img, cmap=cmap, vmin=0, vmax=config.vmax, extent=ext)
         ax.add_patch(
             plt.Circle((circ.x * px, circ.y * px),
                        circ.r * px,
@@ -365,6 +379,11 @@ def match_mbo(config: MBOMatchConfig,
                        fill=False,
                        lw=1))
         ax.set(title=lbl, xlabel='X [mm]', ylabel='Y [mm]')
+        fig_rot.colorbar(im,
+                         ax=ax,
+                         fraction=0.046,
+                         pad=0.04,
+                         label='Intensity')
     fig_rot.tight_layout()
     report.add_figure(fig_rot,
                       caption='Step 3: Rotated to vertical edges',
@@ -410,7 +429,7 @@ def match_mbo(config: MBOMatchConfig,
          f'Right (foil {config.right_foil_id})'),
     ]:
         ext = [0, img.shape[1] * px, img.shape[0] * px, 0]
-        ax.imshow(img, cmap=cmap, vmin=0, vmax=vmax, extent=ext)
+        im = ax.imshow(img, cmap=cmap, vmin=0, vmax=vmax, extent=ext)
         ax.add_patch(
             plt.Circle((ic.x * px, ic.y * px),
                        ic.r * px,
@@ -427,6 +446,7 @@ def match_mbo(config: MBOMatchConfig,
         ax.set(title=f'{lbl}\nBlue=initial, Black=refined',
                xlabel='X [mm]',
                ylabel='Y [mm]')
+        fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04, label='Intensity')
     fig.tight_layout()
     report.add_figure(
         fig,
@@ -451,11 +471,11 @@ def match_mbo(config: MBOMatchConfig,
     # Report: initial merged image
     fig_m, ax_m = plt.subplots(figsize=(14, 6))
     hm, wm = merged.shape
-    ax_m.imshow(merged,
-                cmap=cmap,
-                vmin=0,
-                vmax=vmax,
-                extent=[0, wm * px, hm * px, 0])
+    im_m = ax_m.imshow(merged,
+                       cmap=cmap,
+                       vmin=0,
+                       vmax=vmax,
+                       extent=[0, wm * px, hm * px, 0])
     for c in (left_c_m, right_c_m):
         ax_m.add_patch(
             plt.Circle((c.x * px, c.y * px),
@@ -466,6 +486,7 @@ def match_mbo(config: MBOMatchConfig,
         ax_m.plot(c.x * px, c.y * px, 'k+', ms=10, mew=1.5)
     ax_m.set(title='Initial merge', xlabel='X [mm]', ylabel='Y [mm]')
     ax_m.grid(True, color='k', alpha=0.2, lw=0.5)
+    fig_m.colorbar(im_m, ax=ax_m, fraction=0.03, pad=0.02, label='Intensity')
     fig_m.tight_layout()
     report.add_figure(fig_m,
                       caption='Step 6: Merged foils (initial margin)',
@@ -518,11 +539,11 @@ def match_mbo(config: MBOMatchConfig,
     # Report: optimised merged image
     fig_o, ax_o = plt.subplots(figsize=(14, 6))
     ho, wo = merged_opt.shape
-    ax_o.imshow(merged_opt,
-                cmap=cmap,
-                vmin=0,
-                vmax=vmax,
-                extent=[0, wo * px, ho * px, 0])
+    im_o = ax_o.imshow(merged_opt,
+                       cmap=cmap,
+                       vmin=0,
+                       vmax=vmax,
+                       extent=[0, wo * px, ho * px, 0])
     for c in (left_c_mo, right_c_mo):
         ax_o.add_patch(
             plt.Circle((c.x * px, c.y * px),
@@ -537,6 +558,7 @@ def match_mbo(config: MBOMatchConfig,
         xlabel='X [mm]',
         ylabel='Y [mm]')
     ax_o.grid(True, color='k', alpha=0.2, lw=0.5)
+    fig_o.colorbar(im_o, ax=ax_o, fraction=0.03, pad=0.02, label='Intensity')
     fig_o.tight_layout()
     report.add_figure(fig_o,
                       caption='Step 8: Merged foils (optimised margin)',

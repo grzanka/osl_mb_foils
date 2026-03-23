@@ -189,8 +189,8 @@ class MBOMatchConfig:
     left_foil_id: int = 1
     right_foil_id: int = 2
     edge_threshold: float = 400.0
-    edge_x_positions: List[int] = field(
-        default_factory=lambda: [140, 160, 180, 200, 220, 240, 260])
+    edge_x_positions_mm: List[float] = field(
+        default_factory=lambda: [10.4, 11.8, 13.3, 14.8, 16.3, 17.8, 19.2])
     edge_stripe_width: int = 10
     crop_size: int = 300
     merge_margin: int = 0
@@ -291,6 +291,28 @@ class ComparisonSummaryConfig:
         return self
 
 
+@dataclass
+class MBORawSurveyConfig:
+    """Config for raw MBO foil survey — no background subtraction."""
+    facility: str = "ccb"
+    data_dir: str = ""
+    cut_px: int = 200
+    pixel_size_mm: float = 0.074
+    smooth_method: str = "none"  # "none", "gaussian", or "median"
+    smooth_kernel: int = 5
+    clip_percentile_low: float = 1.0
+    clip_percentile_high: float = 99.0
+    contour_levels: List[float] = field(
+        default_factory=lambda: [400, 600, 800, 1000, 1200, 1400, 1600])
+    data_root: str = ""
+
+    def resolve_paths(self) -> "MBORawSurveyConfig":
+        root = Path(self.data_root) if self.data_root else _resolve_data_root()
+        if self.data_dir and not Path(self.data_dir).is_absolute():
+            self.data_dir = str(root / self.data_dir)
+        return self
+
+
 # Map of config type names to classes
 CONFIG_CLASSES = {
     "mc_depth_validation": MCDepthValidationConfig,
@@ -301,6 +323,7 @@ CONFIG_CLASSES = {
     "mbo_explore": MBOExploreConfig,
     "mbo_match": MBOMatchConfig,
     "mbo_comparison": MBOComparisonConfig,
+    "mbo_raw_survey": MBORawSurveyConfig,
     "comparison_facility": ComparisonFacilityConfig,
     "comparison_summary": ComparisonSummaryConfig,
 }
