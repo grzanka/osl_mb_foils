@@ -1,0 +1,13 @@
+type: ebt_comparison
+
+aic144_npz: ebt_2D_aic144.npz
+ccb_npz: ebt_2D_ccb.npz
+
+pencil_mark_x_aic144_mm: 15.4591
+pencil_mark_x_ccb_mm: 12.136225
+
+strip_width_mm: 5.0
+dpi: 150.0
+
+output_csv_aic144: ebt_profile_aic144.csv
+output_csv_ccb: ebt_profile_ccb.csv

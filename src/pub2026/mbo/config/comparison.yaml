@@ -1,0 +1,5 @@
+type: mbo_comparison
+aic144_profile_path: foils_mbo_aic144/2025-10-09/profile_foils_1_2.npz
+ccb_profile_path: foils_mbo_ccb/2026-02-20/profile_foils_2_3.npz
+reference_dose_gy: 5.0
+reference_x_mm: 5.0

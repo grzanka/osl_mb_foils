@@ -1,0 +1,6 @@
+type: mc_comparison
+# These CSVs are outputs from the wedge pipeline — use output_dir-relative paths.
+# When running via `run-all`, set these to the output directory path.
+aic144_csv: mc_aic144_big.csv
+ccb_csv: mc_ccb_big.csv
+reference_dose_gy: 5.0

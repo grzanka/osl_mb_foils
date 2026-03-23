@@ -1,0 +1,8 @@
+type: comparison_facility
+facility: ccb
+mc_csv: mc_ccb_big.csv
+ebt_csv: ebt_profile_ccb.csv
+mbo_npz: foils_mbo_ccb/2026-02-20/profile_foils_2_3.npz
+normalize_at_x: 0.0
+mbo_gap_exclude_min_mm: 9.0
+mbo_gap_exclude_max_mm: 16.0

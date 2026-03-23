@@ -1,0 +1,4 @@
+type: mc_depth_validation
+mc_csv_path: mc_ccb/small/graph_z_profile_DOSE.csv
+threshold: 0.1
+output_h5: ccb.h5

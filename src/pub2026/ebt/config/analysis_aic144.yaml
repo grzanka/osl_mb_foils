@@ -1,0 +1,31 @@
+type: ebt_analysis
+facility: aic144
+
+file_pairs:
+  - signal: ebt_aic144/szyba1/film_20260122_szyba1120.tif
+    background: ebt_aic144/szyba1/film_20260122_szyba1_096.tif
+    key: szyba1
+  - signal: ebt_aic144/bezszyby/po/film_20260122_bezszyby119.tif
+    background: ebt_aic144/bezszyby/przed/film_20260122_BEZSZYBY095.tif
+    key: bezszyby
+
+crop_dose_threshold_gy: 0.5
+crop_smooth_sigma_mm: 0.1
+crop_min_diameter_mm: 5.0
+crop_margin_mm: 9.0
+cmap_white_threshold_percent: 1.0
+
+pencil_threshold_gy: 13.0
+pencil_mark1_y_range_mm: [40.0, 55.0]
+pencil_mark1_x_range_mm: [12.0, 18.0]
+pencil_mark2_y_range_mm: [0.0, 10.0]
+pencil_mark2_x_range_mm: [12.0, 18.0]
+line_fit_dose_threshold_gy: 1.0
+
+circle_radius_mm: 10.0
+profile_half_width_px: 10
+dpi: 150.0
+rotation_k: 1
+
+output_npz: ebt_2D_aic144.npz
+output_pair_key: szyba1

@@ -1,0 +1,34 @@
+type: ebt_analysis
+facility: ccb
+
+file_pairs:
+  - signal: ebt_ccb/szyba1_150dpi/gaf1_pik_Bragga_CCB_SZYBA1057.tif
+    background: ebt_ccb/szyba1_150dpi/gaf1-2_Sadel_20251209_SZYBA1_030.tif
+    key: szyba1_150dpi
+  - signal: ebt_ccb/szyba1_72dpi/gaf1_pik_Bragga_CCB_SZYBA1058.tif
+    background: ebt_ccb/szyba1_72dpi/gaf1-2_Sadel_20251209_SZYBA1_031.tif
+    key: szyba1_72dpi
+  - signal: ebt_ccb/bez_szyby_150dpi/gaf1_pik_Bragga_CCB_056.tif
+    background: ebt_ccb/bez_szyby_150dpi/gaf1-2_Sadel_20251209_029.tif
+    key: bez_szyby_150dpi
+
+crop_dose_threshold_gy: 2.0
+crop_smooth_sigma_mm: 0.2
+crop_min_diameter_mm: 10.0
+crop_margin_mm: 4.0
+cmap_white_threshold_percent: 1.0
+
+pencil_threshold_gy: 3.0
+pencil_mark1_y_range_mm: [40.0, 55.0]
+pencil_mark1_x_range_mm: [10.0, 15.0]
+pencil_mark2_y_range_mm: [0.0, 10.0]
+pencil_mark2_x_range_mm: [10.0, 15.0]
+line_fit_dose_threshold_gy: 1.0
+
+circle_radius_mm: 10.0
+profile_half_width_px: 10
+dpi: 150.0
+rotation_k: 1
+
+output_npz: ebt_2D_ccb.npz
+output_pair_key: szyba1_150dpi

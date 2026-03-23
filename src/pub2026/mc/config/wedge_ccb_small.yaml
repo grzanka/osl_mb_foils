@@ -1,0 +1,10 @@
+type: mc_wedge
+facility: ccb_small
+file_format: csv
+dose_file: mc_ccb/small/graph_entryx_DOSE.csv
+fluence_file: mc_ccb/small/graph_entryx_FLUENCE.csv
+energy_file: mc_ccb/small/graph_entryx_AVG-ENERGY.csv
+depth_filter_min_mm: -15.0
+depth_filter_max_mm: 17.0
+depth_shift_mm: 15.0
+output_csv: mc_ccb.csv

@@ -1,0 +1,10 @@
+type: mbo_explore
+facility: ccb
+data_dir: foils_mbo_ccb/2026-02-20
+cut_px: 200
+gaussian_kernel: 3
+median_filter_size: 5
+n_sigma: 7.0
+probe_radius: 30
+pixel_size_mm: 0.074
+output_pkl: mbo_ccb_processed.pkl

@@ -23,11 +23,14 @@ scikit-learn = "^1.7.2"
 scikit-image = "^0.25.2"
 plotly = "^6.3.1"
 nbformat = "^5.10.4"
+pyyaml = "^6.0"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^4.2.0"
 yapf = "^0.43.0"
 ipykernel = "^6.29.5"
+pytest = "^8.0"
+pytest-cov = "^6.0"
 
 [build-system]
 requires = ["poetry-core"]
@@ -36,3 +39,9 @@ build-backend = "poetry.core.masonry.api"
 # configure flake8 for lines of length 160
 [tool.flake8]
 max-line-length = 160
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "integration: marks tests that require real data files (deselect with '-m \"not integration\"')",
+]
