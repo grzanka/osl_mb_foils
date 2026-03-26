@@ -8,3 +8,4 @@ smooth_kernel: 5
 clip_percentile_low: 1.0
 clip_percentile_high: 99.0
 contour_levels: [600, 700, 800, 900]
+output_npz: mbo_survey_ccb_2026-03-17.npz

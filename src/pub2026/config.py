@@ -191,7 +191,7 @@ class MBOMatchConfig:
     edge_threshold: float = 400.0
     edge_x_positions_mm: List[float] = field(
         default_factory=lambda: [10.4, 11.8, 13.3, 14.8, 16.3, 17.8, 19.2])
-    edge_stripe_width: int = 10
+    edge_stripe_width_mm: float = 0.74
     crop_size: int = 300
     merge_margin: int = 0
     pixel_size_mm: float = 0.074
@@ -304,12 +304,44 @@ class MBORawSurveyConfig:
     clip_percentile_high: float = 99.0
     contour_levels: List[float] = field(
         default_factory=lambda: [400, 600, 800, 1000, 1200, 1400, 1600])
+    output_npz: str = ""
     data_root: str = ""
 
     def resolve_paths(self) -> "MBORawSurveyConfig":
         root = Path(self.data_root) if self.data_root else _resolve_data_root()
         if self.data_dir and not Path(self.data_dir).is_absolute():
             self.data_dir = str(root / self.data_dir)
+        return self
+
+
+@dataclass
+class MBOAlignConfig:
+    """Config for MBO foil alignment: circle detection, edge finding, rotation."""
+    facility: str = "ccb"
+    input_npz: str = ""
+    pixel_size_mm: float = 0.074
+    n_sigma: float = 7.0
+    probe_radius: int = 30
+    edge_threshold: float = 400.0
+    edge_x_positions_mm: List[float] = field(
+        default_factory=lambda: [10, 12, 14, 16, 18, 20, 22, 24, 26, 28])
+    edge_stripe_width_mm: float = 0.74
+    circle_gradient_high: float = 400.0
+    circle_gradient_low: float = 50.0
+    circle_edge_distance_mm: float = 0.7
+    circle_radius_tolerance: float = 0.05
+    crop_size_mm: float = 24.0
+    clip_percentile_low: float = 1.0
+    clip_percentile_high: float = 99.0
+    contour_levels: List[float] = field(
+        default_factory=lambda: [600, 800, 1000, 1200, 1400, 1600])
+    output_npz: str = ""
+    data_root: str = ""
+
+    def resolve_paths(self) -> "MBOAlignConfig":
+        root = Path(self.data_root) if self.data_root else _resolve_data_root()
+        if self.input_npz and not Path(self.input_npz).is_absolute():
+            self.input_npz = str(root / self.input_npz)
         return self
 
 
@@ -324,6 +356,7 @@ CONFIG_CLASSES = {
     "mbo_match": MBOMatchConfig,
     "mbo_comparison": MBOComparisonConfig,
     "mbo_raw_survey": MBORawSurveyConfig,
+    "mbo_align": MBOAlignConfig,
     "comparison_facility": ComparisonFacilityConfig,
     "comparison_summary": ComparisonSummaryConfig,
 }

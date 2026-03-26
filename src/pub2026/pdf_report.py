@@ -43,7 +43,12 @@ class PDFReport:
                     fig: Figure,
                     source_paths: Optional[List[str]] = None):
         """Add annotation footer to a figure."""
-        footer_parts = [f"Generated: {self._format_timestamp()}"]
+        elapsed = datetime.now() - self.generation_time
+        elapsed_s = elapsed.total_seconds()
+        footer_parts = [
+            f"Generated: {self._format_timestamp()} "
+            f"(elapsed: {elapsed_s:.1f}s)"
+        ]
         if self.config_path:
             footer_parts.append(f"Config: {self.config_path}")
         if source_paths:
@@ -242,3 +247,32 @@ class PDFReport:
         """Close and save the PDF."""
         self._pdf.close()
         return str(self.output_path)
+
+    def add_png_bytes(self, png_bytes: bytes, caption: str = ""):
+        """Add a pre-rendered PNG image as a new PDF page.
+
+        Used by parallel workers that serialise figures to PNG bytes.
+        """
+        import io as _io
+        self._page_count += 1
+        buf = _io.BytesIO(png_bytes)
+        img = plt.imread(buf)
+        h_px, w_px = img.shape[:2]
+        aspect = h_px / w_px
+        page_w = 10
+        page_h = page_w * aspect
+        fig = plt.figure(figsize=(page_w, page_h))
+        ax = fig.add_axes([0, 0.03, 1, 0.94])
+        ax.imshow(img)
+        ax.axis('off')
+        if caption:
+            fig.text(0.5,
+                     0.015,
+                     caption,
+                     ha='center',
+                     va='bottom',
+                     fontsize=8,
+                     style='italic',
+                     wrap=True)
+        self._pdf.savefig(fig)
+        plt.close(fig)

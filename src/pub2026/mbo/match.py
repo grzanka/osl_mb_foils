@@ -317,10 +317,11 @@ def match_mbo(config: MBOMatchConfig,
 
     # 2. Edge detection & line fitting ---------------------------------------
     edge_x_px = [int(round(x_mm / px)) for x_mm in config.edge_x_positions_mm]
+    stripe_width_px = max(1, int(round(config.edge_stripe_width_mm / px)))
     left_xr = find_edge_crossings(left_img, edge_x_px, config.edge_threshold,
-                                  config.edge_stripe_width)
+                                  stripe_width_px)
     right_xr = find_edge_crossings(right_img, edge_x_px, config.edge_threshold,
-                                   config.edge_stripe_width)
+                                   stripe_width_px)
     left_line = fit_edge_line(left_xr, robust=True)
     right_line = fit_edge_line(right_xr, robust=True)
 

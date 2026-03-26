@@ -23,6 +23,7 @@ Output directory structure::
 
 import argparse
 import sys
+import time
 from pathlib import Path
 
 import yaml
@@ -40,6 +41,7 @@ _MODULE_MAP = {
     'mbo_match': 'mbo',
     'mbo_comparison': 'mbo',
     'mbo_raw_survey': 'mbo',
+    'mbo_align': 'mbo',
     'comparison_facility': 'comparisons',
     'comparison_summary': 'comparisons',
 }
@@ -56,8 +58,14 @@ def _resolve_output_dirs(base_output_dir: str, config_type: str):
     return str(data_dir), str(reports_dir)
 
 
+# Module-level flags set by CLI arguments
+_TIMING_ENABLED = False
+_PARALLEL_ENABLED = False
+
+
 def _run_pipeline(config_path: str, output_dir: str):
     """Load a YAML config, resolve data paths, and dispatch to the correct pipeline."""
+    t_start = time.perf_counter()
     with open(config_path) as f:
         raw = yaml.safe_load(f)
 
@@ -140,6 +148,16 @@ def _run_pipeline(config_path: str, output_dir: str):
                            Path(reports_dir) /
                            f"4_mbo_raw_survey_{cfg.facility}.pdf"))
 
+    elif config_type == 'mbo_align':
+        cfg = load_config(config_path, 'mbo_align')
+        from src.pub2026.mbo.align import align_mbo
+        align_mbo(cfg,
+                  output_dir=data_dir,
+                  pdf_path=str(
+                      Path(reports_dir) / f"5_mbo_align_{cfg.facility}.pdf"),
+                  timing=_TIMING_ENABLED,
+                  parallel=_PARALLEL_ENABLED)
+
     elif config_type == 'comparison_facility':
         cfg = load_config(config_path, 'comparison_facility')
         from src.pub2026.comparisons.facility import compare_facility
@@ -160,6 +178,10 @@ def _run_pipeline(config_path: str, output_dir: str):
         print(f"Unknown config type: {config_type!r}")
         print(f"Supported types: {', '.join(CONFIG_CLASSES.keys())}")
         sys.exit(1)
+
+    if _TIMING_ENABLED:
+        elapsed = time.perf_counter() - t_start
+        print(f"\n[TIMING] Total pipeline time: {elapsed:.2f}s")
 
 
 def _run_all(output_dir: str):
@@ -201,6 +223,14 @@ def main():
                        '-o',
                        default='output/pub2026',
                        help='Output directory (default: output/pub2026)')
+    run_p.add_argument('--timing',
+                       '-t',
+                       action='store_true',
+                       help='Print per-step timing information')
+    run_p.add_argument('--parallel',
+                       '-j',
+                       action='store_true',
+                       help='Process foils in parallel (multiprocessing)')
 
     # run all
     all_p = sub.add_parser('run-all', help='Run all configs in standard order')
@@ -208,8 +238,20 @@ def main():
                        '-o',
                        default='output/pub2026',
                        help='Output directory (default: output/pub2026)')
+    all_p.add_argument('--timing',
+                       '-t',
+                       action='store_true',
+                       help='Print per-step timing information')
+    all_p.add_argument('--parallel',
+                       '-j',
+                       action='store_true',
+                       help='Process foils in parallel (multiprocessing)')
 
     args = parser.parse_args()
+
+    global _TIMING_ENABLED, _PARALLEL_ENABLED
+    _TIMING_ENABLED = getattr(args, 'timing', False)
+    _PARALLEL_ENABLED = getattr(args, 'parallel', False)
 
     if args.command == 'run':
         _run_pipeline(args.config, args.output_dir)

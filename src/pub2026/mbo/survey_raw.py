@@ -226,3 +226,13 @@ def survey_raw_mbo(config: MBORawSurveyConfig,
 
     report.save()
     print(f"PDF report saved to: {pdf_path}")
+
+    # -- Save smoothed images as NPZ for downstream (align) --
+    npz_name = config.output_npz or f"mbo_survey_{config.facility}.npz"
+    npz_path = output_dir_path / npz_name
+    save_dict = {'detector_ids': np.array(sorted(raw_images.keys()))}
+    for did in sorted(raw_images.keys()):
+        save_dict[f'foil_{did}_raw'] = raw_images[did]
+        save_dict[f'foil_{did}_lv'] = lv_images[did]
+    np.savez_compressed(npz_path, **save_dict)
+    print(f"Survey NPZ saved to: {npz_path}")

@@ -6,7 +6,7 @@ left_foil_id: 2
 right_foil_id: 3
 edge_threshold: 400.0
 edge_x_positions_mm: [16, 18, 20, 22, 24, 26, 28]
-edge_stripe_width: 10
+edge_stripe_width_mm: 0.74
 crop_size: 300
 merge_margin: 0
 pixel_size_mm: 0.074
