@@ -1,0 +1,19 @@
+type: mbo_background_subtraction
+facility: ccb_2026-03-17_2026-03-19
+reference_npz: mbo_align_ccb_2026-03-17.npz
+target_npz: mbo_align_ccb_2026-03-19.npz
+reference_label: 03-17
+target_label: 03-19
+pixel_size_mm: 0.074
+reference_foil_ids: [1, 2]
+background_foil_ids: [3, 4]
+background_radius_fraction: 0.8
+normalization_radius_fraction: 0.9
+smoothing_sigma_px: 6.0
+profile_strip_half_width_px: 5
+minimum_divisor: 0.5
+ratio_mask_radius_fraction: 1.0
+scenario_a_contour_levels: [25.0, 50.0, 100.0, 200.0, 300.0]
+normalized_contour_levels: [0.9, 0.95, 1.0, 1.05, 1.1]
+ratio_contour_levels: [0.9, 0.95, 1.0, 1.05, 1.1]
+output_npz: mbo_background_subtraction_ccb_2026-03-17_2026-03-19.npz

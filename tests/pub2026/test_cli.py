@@ -63,3 +63,12 @@ class TestCLIDispatch:
                 "src.pub2026.mc.depth_validation.validate_depth_dose") as mock:
             _run_pipeline(str(cfg), str(tmp_path / "out"))
             mock.assert_called_once()
+
+    def test_dispatch_calls_background_subtraction_pipeline(self, tmp_path):
+        cfg = tmp_path / "bg.yaml"
+        cfg.write_text(yaml.dump({"type": "mbo_background_subtraction"}))
+        with patch(
+                "src.pub2026.mbo.background_subtraction.explore_background_subtraction"
+        ) as mock:
+            _run_pipeline(str(cfg), str(tmp_path / "out"))
+            mock.assert_called_once()

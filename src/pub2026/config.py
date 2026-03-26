@@ -345,6 +345,42 @@ class MBOAlignConfig:
         return self
 
 
+@dataclass
+class MBOBackgroundSubtractionConfig:
+    """Config for post-alignment MBO background-subtraction scenarios."""
+    facility: str = "ccb_2026-03-17_2026-03-19"
+    reference_npz: str = ""
+    target_npz: str = ""
+    reference_label: str = "03-17"
+    target_label: str = "03-19"
+    pixel_size_mm: float = 0.074
+    reference_foil_ids: List[int] = field(default_factory=lambda: [1, 2])
+    background_foil_ids: List[int] = field(default_factory=lambda: [3, 4])
+    background_radius_fraction: float = 0.8
+    normalization_radius_fraction: float = 0.9
+    smoothing_sigma_px: float = 6.0
+    profile_strip_half_width_px: int = 5
+    minimum_divisor: float = 0.5
+    ratio_mask_radius_fraction: float = 1.0
+    scenario_a_contour_levels: List[float] = field(
+        default_factory=lambda: [-300.0, -200.0, -100.0, -50.0, -25.0,
+                                 25.0, 50.0, 100.0, 200.0, 300.0])
+    normalized_contour_levels: List[float] = field(
+        default_factory=lambda: [0.9, 0.95, 1.0, 1.05, 1.1])
+    ratio_contour_levels: List[float] = field(
+        default_factory=lambda: [0.9, 0.95, 1.0, 1.05, 1.1])
+    output_npz: str = ""
+    data_root: str = ""
+
+    def resolve_paths(self) -> "MBOBackgroundSubtractionConfig":
+        root = Path(self.data_root) if self.data_root else _resolve_data_root()
+        for attr in ("reference_npz", "target_npz"):
+            val = getattr(self, attr)
+            if val and not Path(val).is_absolute():
+                setattr(self, attr, str(root / val))
+        return self
+
+
 # Map of config type names to classes
 CONFIG_CLASSES = {
     "mc_depth_validation": MCDepthValidationConfig,
@@ -357,6 +393,7 @@ CONFIG_CLASSES = {
     "mbo_comparison": MBOComparisonConfig,
     "mbo_raw_survey": MBORawSurveyConfig,
     "mbo_align": MBOAlignConfig,
+    "mbo_background_subtraction": MBOBackgroundSubtractionConfig,
     "comparison_facility": ComparisonFacilityConfig,
     "comparison_summary": ComparisonSummaryConfig,
 }

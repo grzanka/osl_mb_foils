@@ -20,6 +20,7 @@ src/pub2026/
 │   └── config/
 ├── mbo/               # MBO foil detector analysis
 │   ├── explore.py            # Background subtraction, noise analysis
+│   ├── background_subtraction.py # Post-alignment 03-17/03-19 background scenarios
 │   ├── match.py              # Two-foil edge matching and merging
 │   ├── comparison.py         # AIC-144 vs CCB MBO comparison
 │   └── config/
@@ -64,6 +65,7 @@ All parameters are stored in YAML files under each module's `config/` directory.
 | `mbo_explore` | mbo/explore.py | MBO detector exploration |
 | `mbo_match` | mbo/match.py | Two-foil matching and merging |
 | `mbo_comparison` | mbo/comparison.py | MBO cross-facility comparison |
+| `mbo_background_subtraction` | mbo/background_subtraction.py | Post-alignment background subtraction scenarios |
 | `comparison_facility` | comparisons/facility.py | MC vs EBT vs MBO per facility |
 | `comparison_summary` | comparisons/summary.py | Full cross-facility summary |
 
@@ -115,7 +117,7 @@ When using `run-all`, configs are executed in this order:
 
 1. **MC** — depth validation, wedge profiles (CCB small, CCB big, AIC-144 big), comparison
 2. **EBT** — film analysis (AIC-144, CCB), comparison
-3. **MBO** — exploration (AIC-144, CCB), matching (AIC-144, CCB), comparison
+3. **MBO** — exploration (AIC-144, CCB), matching (AIC-144, CCB), alignment/raw survey utilities, post-alignment background subtraction, comparison
 4. **Comparisons** — per-facility (AIC-144, CCB), summary
 
 ## Notebook Mapping

@@ -42,6 +42,7 @@ _MODULE_MAP = {
     'mbo_comparison': 'mbo',
     'mbo_raw_survey': 'mbo',
     'mbo_align': 'mbo',
+    'mbo_background_subtraction': 'mbo',
     'comparison_facility': 'comparisons',
     'comparison_summary': 'comparisons',
 }
@@ -157,6 +158,16 @@ def _run_pipeline(config_path: str, output_dir: str):
                       Path(reports_dir) / f"5_mbo_align_{cfg.facility}.pdf"),
                   timing=_TIMING_ENABLED,
                   parallel=_PARALLEL_ENABLED)
+
+    elif config_type == 'mbo_background_subtraction':
+        cfg = load_config(config_path, 'mbo_background_subtraction')
+        from src.pub2026.mbo.background_subtraction import explore_background_subtraction
+        explore_background_subtraction(
+            cfg,
+            output_dir=data_dir,
+            pdf_path=str(
+                Path(reports_dir)
+                / f"6_mbo_background_subtraction_{cfg.facility}.pdf"))
 
     elif config_type == 'comparison_facility':
         cfg = load_config(config_path, 'comparison_facility')
