@@ -362,6 +362,7 @@ class MBOBackgroundSubtractionConfig:
     profile_strip_half_width_px: int = 5
     minimum_divisor: float = 0.5
     ratio_mask_radius_fraction: float = 1.0
+    target_bg_y_threshold_mm: float = 7.0
     scenario_a_contour_levels: List[float] = field(
         default_factory=lambda: [-300.0, -200.0, -100.0, -50.0, -25.0,
                                  25.0, 50.0, 100.0, 200.0, 300.0])

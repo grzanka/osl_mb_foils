@@ -96,3 +96,61 @@ Document my prompt and your actions.
 - Added a regression test that forces zero division and verifies the stored ratio values are `0.0` wherever the division is invalid.
 - Re-ran tests: `35 passed`.
 - Re-ran the pipeline with Poetry and regenerated the scenario B PDF and NPZ outputs successfully.
+
+---
+
+## 2026-03-26: Additional Scenario B pages and Scenario A/B comparison
+
+### User prompt
+
+For scenario B:
+Present on a separate page the "normalizedxsmoothed" with horintoal and vertical profiles.
+
+Then on a next page present "bg-sub" 2D data, then "03/19 / norx smoothed" 2D data, then comparizon of vertical profiles from both 2D images, then comparison of vertical profiles from both images.
+
+Finally add a page where scenario A is compared with scenario B, in terms of 2D raw signal maps and vertical and horizontal profiles.
+
+Document my and your stuff as before.
+
+### Actions taken
+
+- Added `_plot_profile_comparison()` helper to overlay two profiles on one axes with consistent labeling.
+- Added `_plot_scenario_b_normalized_rows()` to create a dedicated page for the normalized×smoothed images with combined horizontal and vertical profiles.
+- Added `_plot_scenario_b_bgsub_vs_ratio_rows()` to create the next page with four columns per foil: bg-sub 2D image, divided-result 2D image, vertical-profile comparison, and horizontal-profile comparison.
+- Interpreted the duplicated request for two vertical-profile comparisons as vertical plus horizontal profile comparisons, since that matches the surrounding requirement and produces a complete page.
+- Added `_plot_scenario_ab_comparison_rows()` to compare Scenario A and Scenario B directly for each foil using 2D signal maps plus vertical and horizontal profile overlays.
+- Replaced the previous single combined Scenario B page in the report with the new dedicated normalized page, the dedicated bg-sub vs divided-result page, and the final Scenario A vs Scenario B comparison page.
+- Re-ran tests: `35 passed`.
+- Re-ran the pipeline with Poetry and regenerated the PDF and NPZ outputs successfully.
+
+---
+
+## 2026-03-26: Workflow diagrams in PDF + per-foil target background subtraction
+
+### User prompt
+
+Document well steps for scenario A and B in generated PDF, you can use a diagram for that as well.
+
+In scenario B add additional step, namely for foils from 19-03, instead of subtracting fixed number being a background signal, subtract mean value of signal from foils 03-17. For foil 1 from 03-19, instead of subtracting background level, subtract mean value from foil 1 from 03-17, from the area up to 90 percent of circle radius, but only from pixels which Y coordinate is higher than 7mm. The same should be done for foil 2.
+
+Background should still be subtracted for foils 1 and from 03-17, to obtain normalized stuff. Rest of the steps should stay the same.
+
+Document my steps as well.
+
+### Actions taken
+
+- Added `_draw_flowchart_scenario_a()` — creates a matplotlib-based flowchart diagram documenting the Scenario A workflow (load → center → subtract → clamp → output).
+- Added `_draw_flowchart_scenario_b()` — creates a matplotlib-based flowchart diagram documenting the Scenario B workflow, with two branches showing:
+  - Left branch: reference foils get a fixed background level (from foils 3, 4), then normalization and smoothing.
+  - Right branch: target foils get a per-foil background level (mean of corresponding reference foil, filtered by radius fraction and Y threshold).
+  - Both branches merge at the division step.
+- Both diagrams are inserted as early pages in the PDF, right after the parameters page.
+- Added `target_bg_y_threshold_mm` config parameter (default `7.0`) to `MBOBackgroundSubtractionConfig`.
+- Added `_circle_mean_y_filtered()` helper: computes the mean value inside a circle radius fraction, restricted to pixels where the Y coordinate (relative to circle center) exceeds a configurable threshold in mm. Falls back to the regular `_circle_mean()` if no pixels pass the Y filter.
+- Modified Scenario B in `explore_background_subtraction()`:
+  - **Reference foils (03-17)**: continue to subtract the fixed background level (average of foils 3, 4 inside 80% radius). This is unchanged.
+  - **Target foils (03-19)**: instead of subtracting the same fixed background level, each target foil now subtracts the mean of its corresponding reference foil, computed inside 90% radius and restricted to Y > 7 mm.
+- Updated the Scenario B text page in the PDF to document both background subtraction approaches (fixed for reference, per-foil for target) with all numerical values.
+- Updated PDF captions and descriptions to reflect the new per-foil background levels.
+- Per-foil background levels are saved in the output NPZ as `target_foil_{id}_bg_level`.
+- Existing tests pass unchanged (79 passed) because the synthetic test images are small enough that the Y threshold filter falls back gracefully to the unfiltered mean.

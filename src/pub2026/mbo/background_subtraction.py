@@ -82,6 +82,26 @@ def _circle_mean(image: np.ndarray, circle: Circle,
     return float(np.nanmean(image[mask]))
 
 
+def _circle_mean_y_filtered(image: np.ndarray, circle: Circle,
+                            radius_fraction: float,
+                            y_threshold_mm: float,
+                            pixel_size_mm: float) -> float:
+    """Mean inside radius fraction, restricted to pixels with Y > threshold.
+
+    Y is measured in mm relative to the circle center; positive Y points
+    downward in image coordinates.
+    """
+    mask = _radius_mask(image.shape, circle, radius_fraction)
+    yy = np.arange(image.shape[0])
+    y_rel_mm = (yy - circle.y) * pixel_size_mm
+    y_mask = y_rel_mm[:, np.newaxis] > y_threshold_mm
+    y_mask = np.broadcast_to(y_mask, image.shape)
+    combined = mask & y_mask
+    if not np.any(combined):
+        return _circle_mean(image, circle, radius_fraction)
+    return float(np.nanmean(image[combined]))
+
+
 def _relative_axes(image: np.ndarray, circle: Circle,
                    px: float) -> Tuple[List[float], np.ndarray, np.ndarray]:
     height, width = image.shape
@@ -211,6 +231,25 @@ def _plot_profiles_combined(ax: plt.Axes,
     if reference_line is not None:
         ax.axhline(reference_line, color='tab:red', lw=0.8, ls=':')
     ax.set(xlabel='Distance from center [mm]', ylabel='Signal', title=title)
+    ax.legend()
+
+
+def _plot_profile_comparison(ax: plt.Axes,
+                             positions_a: np.ndarray,
+                             values_a: np.ndarray,
+                             label_a: str,
+                             positions_b: np.ndarray,
+                             values_b: np.ndarray,
+                             label_b: str,
+                             title: str,
+                             axis_label: str,
+                             reference_line: Optional[float] = None) -> None:
+    ax.plot(positions_a, values_a, lw=1.2, label=label_a)
+    ax.plot(positions_b, values_b, lw=1.2, label=label_b)
+    ax.axvline(0.0, color='black', lw=0.8, ls='--', alpha=0.5)
+    if reference_line is not None:
+        ax.axhline(reference_line, color='tab:red', lw=0.8, ls=':')
+    ax.set(xlabel=axis_label, ylabel='Signal', title=title)
     ax.legend()
 
 
@@ -353,76 +392,281 @@ def _plot_bg_subtracted_rows(dataset_label: str,
     return fig
 
 
-def _two_slope_around_one(image: np.ndarray) -> Optional[TwoSlopeNorm]:
-    finite = image[np.isfinite(image)]
-    if finite.size == 0:
-        return None
-    p01 = float(np.percentile(finite, 1))
-    p99 = float(np.percentile(finite, 99))
-    if p01 < 1.0 < p99:
-        return TwoSlopeNorm(vcenter=1.0, vmin=p01, vmax=p99)
-    return None
-
-
-
-def _plot_scenario_b_rows(reference_label: str,
-                          target_label: str,
-                          rows: Dict[int, Dict[str, object]],
-                          px: float,
-                          strip_half_width_px: int,
-                          normalized_contours: List[float],
-                          ratio_contours: List[float]) -> plt.Figure:
+def _plot_scenario_b_normalized_rows(reference_label: str,
+                                     rows: Dict[int, Dict[str, object]],
+                                     px: float,
+                                     strip_half_width_px: int,
+                                     normalized_contours: List[float]) -> plt.Figure:
     foil_ids = sorted(rows)
     fig, axes = plt.subplots(len(foil_ids),
-                             5,
-                             figsize=(24, 5 * len(foil_ids)),
+                             2,
+                             figsize=(12, 5 * len(foil_ids)),
                              squeeze=False)
     ref_norm = TwoSlopeNorm(vcenter=1.0, vmin=0.9, vmax=1.1)
     for row, foil_id in enumerate(foil_ids):
         result = rows[foil_id]
         circle = result['circle']
-        ratio_img = result['ratio']
-
-        ref_bg_sub = _clamp_nonneg(result['reference_bg_sub_centered'])
-        tgt_bg_sub = _clamp_nonneg(result['target_bg_sub_centered'])
-        ratio_plot = _clamp_nonneg(ratio_img)
-        bg_vmax = _positive_vmax(ref_bg_sub, tgt_bg_sub)
-
-        _plot_image(axes[row][0],
-                    ref_bg_sub,
-                    circle, px,
-                    title=f'{reference_label} foil {foil_id} bg-sub',
-                    cmap=_WGR_CMAP, vmin=0.0, vmax=bg_vmax)
+        image = result['reference_normalized_smoothed']
         _plot_image(
-            axes[row][1],
-            result['reference_normalized_smoothed'],
-            circle, px,
+            axes[row][0],
+            image,
+            circle,
+            px,
             title=(f'{reference_label} foil {foil_id} normalized×smoothed\n'
                    f'mean ≤ {result["normalization_radius_fraction"]:.0%} r = '
                    f'{result["normalization_mean"]:.3f}, σ={result["smoothing_sigma_px"]:.1f}px'),
             contour_levels=normalized_contours,
             cmap='coolwarm',
             norm=ref_norm)
-        _plot_image(axes[row][2],
-                    tgt_bg_sub,
-                    circle, px,
+        hx, hv, vx, vv = _extract_profiles(image, circle, px,
+                                           strip_half_width_px)
+        _plot_profiles_combined(axes[row][1], hx, hv, vx, vv,
+                                title=f'Foil {foil_id} normalized×smoothed profiles',
+                                reference_line=1.0)
+    fig.suptitle(f'Scenario B — {reference_label} normalized×smoothed',
+                 fontweight='bold', fontsize=12)
+    fig.tight_layout()
+    return fig
+
+
+def _plot_scenario_b_bgsub_vs_ratio_rows(reference_label: str,
+                                         target_label: str,
+                                         rows: Dict[int, Dict[str, object]],
+                                         px: float,
+                                         strip_half_width_px: int) -> plt.Figure:
+    foil_ids = sorted(rows)
+    fig, axes = plt.subplots(len(foil_ids),
+                             4,
+                             figsize=(22, 5 * len(foil_ids)),
+                             squeeze=False)
+    for row, foil_id in enumerate(foil_ids):
+        result = rows[foil_id]
+        circle = result['circle']
+        bg_sub = _clamp_nonneg(result['target_bg_sub_centered'])
+        ratio = _clamp_nonneg(result['ratio'])
+        bg_vmax = _positive_vmax(bg_sub, ratio)
+
+        _plot_image(axes[row][0],
+                    bg_sub,
+                    circle,
+                    px,
                     title=f'{target_label} foil {foil_id} bg-sub',
-                    cmap=_WGR_CMAP, vmin=0.0, vmax=bg_vmax)
-        _plot_image(axes[row][3],
-                    ratio_plot,
-                    circle, px,
-                    title=f'{target_label} / norm×smoothed {reference_label}\nfoil {foil_id}',
-                    contour_levels=None,
                     cmap=_WGR_CMAP,
                     vmin=0.0,
                     vmax=bg_vmax)
-        hx, hv, vx, vv = _extract_profiles(ratio_plot, circle, px,
-                                            strip_half_width_px)
-        _plot_profiles_combined(axes[row][4], hx, hv, vx, vv,
-                                title=f'Foil {foil_id} ratio profiles',
-                                reference_line=0.0)
-    fig.suptitle(f'Scenario B — Ratio: {target_label} / normalized {reference_label}',
+        _plot_image(axes[row][1],
+                    ratio,
+                    circle,
+                    px,
+                    title=f'{target_label} / norm×smoothed {reference_label}\nfoil {foil_id}',
+                    cmap=_WGR_CMAP,
+                    vmin=0.0,
+                    vmax=bg_vmax)
+
+        bg_hx, bg_hv, bg_vx, bg_vv = _extract_profiles(bg_sub, circle, px,
+                                                       strip_half_width_px)
+        ratio_hx, ratio_hv, ratio_vx, ratio_vv = _extract_profiles(
+            ratio, circle, px, strip_half_width_px)
+        _plot_profile_comparison(axes[row][2],
+                                 bg_vx, bg_vv, f'{target_label} bg-sub',
+                                 ratio_vx, ratio_vv, f'{target_label} / norm×smoothed',
+                                 title=f'Foil {foil_id} vertical profile comparison',
+                                 axis_label='Y relative to center [mm]',
+                                 reference_line=0.0)
+        _plot_profile_comparison(axes[row][3],
+                                 bg_hx, bg_hv, f'{target_label} bg-sub',
+                                 ratio_hx, ratio_hv, f'{target_label} / norm×smoothed',
+                                 title=f'Foil {foil_id} horizontal profile comparison',
+                                 axis_label='X relative to center [mm]',
+                                 reference_line=0.0)
+    fig.suptitle(f'Scenario B — {target_label} bg-sub vs divided result',
                  fontweight='bold', fontsize=12)
+    fig.tight_layout()
+    return fig
+
+
+def _plot_scenario_ab_comparison_rows(reference_label: str,
+                                      target_label: str,
+                                      scenario_a_rows: Dict[int, Dict[str, object]],
+                                      scenario_b_rows: Dict[int, Dict[str, object]],
+                                      px: float,
+                                      strip_half_width_px: int,
+                                      contour_levels: List[float]) -> plt.Figure:
+    foil_ids = sorted(scenario_a_rows)
+    fig, axes = plt.subplots(len(foil_ids),
+                             4,
+                             figsize=(22, 5 * len(foil_ids)),
+                             squeeze=False)
+    for row, foil_id in enumerate(foil_ids):
+        result_a = scenario_a_rows[foil_id]
+        result_b = scenario_b_rows[foil_id]
+        circle = result_a['circle']
+        diff_vmax, diff_img = _scenario_a_diff_norm(result_a['difference'])
+        ratio_img = _clamp_nonneg(result_b['ratio'])
+        bg_vmax = _positive_vmax(_clamp_nonneg(result_b['target_bg_sub_centered']),
+                                 ratio_img)
+
+        _plot_image(axes[row][0],
+                    diff_img,
+                    circle,
+                    px,
+                    title=f'Scenario A raw diff, foil {foil_id}',
+                    contour_levels=[level for level in contour_levels if level > 0],
+                    cmap=_WGR_CMAP,
+                    vmin=0.0,
+                    vmax=diff_vmax)
+        _plot_image(axes[row][1],
+                    ratio_img,
+                    circle,
+                    px,
+                    title=f'Scenario B divided result, foil {foil_id}',
+                    cmap=_WGR_CMAP,
+                    vmin=0.0,
+                    vmax=bg_vmax)
+
+        a_hx, a_hv, a_vx, a_vv = _extract_profiles(diff_img, circle, px,
+                                                   strip_half_width_px)
+        b_hx, b_hv, b_vx, b_vv = _extract_profiles(ratio_img, circle, px,
+                                                   strip_half_width_px)
+        _plot_profile_comparison(axes[row][2],
+                                 a_vx, a_vv, 'Scenario A',
+                                 b_vx, b_vv, 'Scenario B',
+                                 title=f'Foil {foil_id} vertical profile comparison',
+                                 axis_label='Y relative to center [mm]',
+                                 reference_line=0.0)
+        _plot_profile_comparison(axes[row][3],
+                                 a_hx, a_hv, 'Scenario A',
+                                 b_hx, b_hv, 'Scenario B',
+                                 title=f'Foil {foil_id} horizontal profile comparison',
+                                 axis_label='X relative to center [mm]',
+                                 reference_line=0.0)
+    fig.suptitle(f'Scenario A vs Scenario B — {target_label} relative to {reference_label}',
+                 fontweight='bold', fontsize=12)
+    fig.tight_layout()
+    return fig
+
+
+def _draw_flowchart_scenario_a(reference_label: str,
+                               target_label: str) -> plt.Figure:
+    """Draw a flowchart diagram for Scenario A workflow."""
+    fig, ax = plt.subplots(figsize=(10, 7))
+    ax.set_xlim(0, 10)
+    ax.set_ylim(0, 10)
+    ax.axis('off')
+
+    box_style = dict(boxstyle='round,pad=0.4', facecolor='#D6EAF8', edgecolor='#2980B9', lw=1.5)
+    result_style = dict(boxstyle='round,pad=0.4', facecolor='#D5F5E3', edgecolor='#27AE60', lw=1.5)
+    arrow_kw = dict(arrowstyle='->', color='#2C3E50', lw=1.5)
+
+    # Title
+    ax.text(5, 9.5, 'Scenario A: Raw Signal Subtraction',
+            ha='center', va='center', fontsize=14, fontweight='bold')
+
+    # Step 1: Load aligned NPZ files
+    ax.annotate('', xy=(5, 8.2), xytext=(5, 8.8), arrowprops=arrow_kw)
+    ax.text(5, 8.8, f'Load aligned foils from\n{reference_label} and {target_label} NPZ files',
+            ha='center', va='center', fontsize=10, bbox=box_style)
+
+    # Step 2: Center both foils
+    ax.annotate('', xy=(5, 6.8), xytext=(5, 7.6), arrowprops=arrow_kw)
+    ax.text(5, 7.0, 'Center both foils on their\ncommon (averaged) circle',
+            ha='center', va='center', fontsize=10, bbox=box_style)
+
+    # Step 3: Subtract
+    ax.annotate('', xy=(5, 5.0), xytext=(5, 5.8), arrowprops=arrow_kw)
+    ax.text(5, 5.2, f'Subtract: {target_label} foil \u2212 {reference_label} foil\n(pixel-by-pixel)',
+            ha='center', va='center', fontsize=10, bbox=box_style)
+
+    # Step 4: Clamp negatives
+    ax.annotate('', xy=(5, 3.2), xytext=(5, 4.0), arrowprops=arrow_kw)
+    ax.text(5, 3.4, 'Clamp negative values to zero\nfor visualization',
+            ha='center', va='center', fontsize=10, bbox=box_style)
+
+    # Result: 2D map + profiles
+    ax.annotate('', xy=(5, 1.4), xytext=(5, 2.2), arrowprops=arrow_kw)
+    ax.text(5, 1.6, 'Output: 2D difference map\n+ H/V profiles per foil',
+            ha='center', va='center', fontsize=10, bbox=result_style)
+
+    # Note on the side
+    ax.text(0.3, 1.0, 'Repeat for each foil (1, 2)',
+            ha='left', va='center', fontsize=9, style='italic', color='gray')
+
+    fig.tight_layout()
+    return fig
+
+
+def _draw_flowchart_scenario_b(reference_label: str,
+                               target_label: str,
+                               bg_foil_ids: List[int],
+                               bg_radius_frac: float,
+                               norm_radius_frac: float,
+                               y_threshold_mm: float) -> plt.Figure:
+    """Draw a flowchart diagram for Scenario B workflow."""
+    fig, ax = plt.subplots(figsize=(10, 11))
+    ax.set_xlim(0, 10)
+    ax.set_ylim(0, 14)
+    ax.axis('off')
+
+    box_style = dict(boxstyle='round,pad=0.35', facecolor='#D6EAF8', edgecolor='#2980B9', lw=1.5)
+    box_style_alt = dict(boxstyle='round,pad=0.35', facecolor='#FCF3CF', edgecolor='#F39C12', lw=1.5)
+    result_style = dict(boxstyle='round,pad=0.35', facecolor='#D5F5E3', edgecolor='#27AE60', lw=1.5)
+    arrow_kw = dict(arrowstyle='->', color='#2C3E50', lw=1.5)
+
+    ax.text(5, 13.5, 'Scenario B: Background Subtraction + Normalization',
+            ha='center', va='center', fontsize=13, fontweight='bold')
+
+    # Left branch: reference foils
+    ax.text(2.5, 12.3, f'{reference_label} foils 1, 2',
+            ha='center', va='center', fontsize=10, fontweight='bold', bbox=box_style)
+    # Right branch: target foils
+    ax.text(7.5, 12.3, f'{target_label} foils 1, 2',
+            ha='center', va='center', fontsize=10, fontweight='bold', bbox=box_style_alt)
+
+    # Left: fixed bg from foils 3,4
+    ax.annotate('', xy=(2.5, 10.8), xytext=(2.5, 11.6), arrowprops=arrow_kw)
+    ax.text(2.5, 11.0, f'Subtract fixed bg level\n(mean of foils {bg_foil_ids}\n'
+            f'inside {bg_radius_frac:.0%} radius)',
+            ha='center', va='center', fontsize=9, bbox=box_style)
+
+    # Right: per-foil bg from reference
+    ax.annotate('', xy=(7.5, 10.8), xytext=(7.5, 11.6), arrowprops=arrow_kw)
+    ax.text(7.5, 11.0, f'Subtract per-foil bg level\n(mean of {reference_label} foil\n'
+            f'inside {norm_radius_frac:.0%} r, Y > {y_threshold_mm} mm)',
+            ha='center', va='center', fontsize=9, bbox=box_style_alt)
+
+    # Left: normalize
+    ax.annotate('', xy=(2.5, 8.8), xytext=(2.5, 9.6), arrowprops=arrow_kw)
+    ax.text(2.5, 9.0, f'Normalize: divide by mean\ninside {norm_radius_frac:.0%} radius',
+            ha='center', va='center', fontsize=9, bbox=box_style)
+
+    # Left: smooth
+    ax.annotate('', xy=(2.5, 7.0), xytext=(2.5, 7.8), arrowprops=arrow_kw)
+    ax.text(2.5, 7.2, 'Apply Gaussian smoothing\n(\u03c3 configurable)',
+            ha='center', va='center', fontsize=9, bbox=box_style)
+
+    # Merge: divide target by normalized reference
+    ax.annotate('', xy=(5, 5.6), xytext=(2.5, 6.2), arrowprops=arrow_kw)
+    ax.annotate('', xy=(5, 5.6), xytext=(7.5, 9.6), arrowprops=arrow_kw)
+    ax.text(5, 5.4, f'Divide: {target_label} bg-sub foil\n\u00f7 '
+            f'{reference_label} normalized\u00d7smoothed foil',
+            ha='center', va='center', fontsize=9, bbox=result_style)
+
+    # Output
+    ax.annotate('', xy=(5, 3.6), xytext=(5, 4.4), arrowprops=arrow_kw)
+    ax.text(5, 3.8, 'Output: 2D ratio map\n+ H/V profiles per foil',
+            ha='center', va='center', fontsize=10, bbox=result_style)
+
+    # Cross-arrow showing "mean computed from ref foil" going to target bg
+    ax.annotate('', xy=(6.0, 11.0), xytext=(4.0, 11.0),
+                arrowprops=dict(arrowstyle='->', color='#E74C3C', lw=1.2, ls='--'))
+    ax.text(5, 11.5, 'mean from\nref foil',
+            ha='center', va='center', fontsize=7, color='#E74C3C', style='italic')
+
+    ax.text(0.3, 2.8, 'Repeat for each foil (1, 2)',
+            ha='left', va='center', fontsize=9, style='italic', color='gray')
+    ax.text(0.3, 2.2, 'Division by zero \u2192 0.0',
+            ha='left', va='center', fontsize=9, style='italic', color='gray')
+
     fig.tight_layout()
     return fig
 
@@ -465,6 +709,24 @@ def explore_background_subtraction(
         title='Inputs and parameters',
         source_paths=[str(reference_npz), str(target_npz)])
 
+    # ── Workflow diagrams ─────────────────────────────────────────────────
+    fig_flow_a = _draw_flowchart_scenario_a(config.reference_label,
+                                            config.target_label)
+    report.add_figure(fig_flow_a,
+                      caption='Workflow diagram for Scenario A')
+    plt.close(fig_flow_a)
+
+    fig_flow_b = _draw_flowchart_scenario_b(
+        config.reference_label,
+        config.target_label,
+        config.background_foil_ids,
+        config.background_radius_fraction,
+        config.normalization_radius_fraction,
+        config.target_bg_y_threshold_mm)
+    report.add_figure(fig_flow_b,
+                      caption='Workflow diagram for Scenario B')
+    plt.close(fig_flow_b)
+
     background_means = {
         foil_id: _circle_mean(reference_foils[foil_id].image,
                               reference_foils[foil_id].circle,
@@ -485,7 +747,21 @@ def explore_background_subtraction(
 
     scenario_a_rows: Dict[int, Dict[str, object]] = {}
     scenario_b_rows: Dict[int, Dict[str, object]] = {}
-    save_dict: Dict[str, object] = {'background_level': background_level}
+    # Per-foil background for target foils: mean of corresponding reference
+    # foil within normalization_radius_fraction, filtered by Y > threshold
+    target_foil_bg_levels: Dict[int, float] = {}
+    for foil_id in config.reference_foil_ids:
+        target_foil_bg_levels[foil_id] = _circle_mean_y_filtered(
+            reference_foils[foil_id].image,
+            reference_foils[foil_id].circle,
+            config.normalization_radius_fraction,
+            config.target_bg_y_threshold_mm,
+            px)
+    save_dict: Dict[str, object] = {
+        'background_level': background_level,
+    }
+    for foil_id, lvl in target_foil_bg_levels.items():
+        save_dict[f'target_foil_{foil_id}_bg_level'] = lvl
 
     for foil_id in config.reference_foil_ids:
         reference_foil = reference_foils[foil_id]
@@ -510,7 +786,7 @@ def explore_background_subtraction(
         save_dict[f'scenario_a_foil_{foil_id}_difference'] = diff_image
 
         ref_bg_sub = reference_foil.image - background_level
-        tgt_bg_sub = target_foil.image - background_level
+        tgt_bg_sub = target_foil.image - target_foil_bg_levels[foil_id]
         ref_bg_sub_centered, common_circle = _shift_to_circle(
             ref_bg_sub, reference_foil.circle, common_circle)
         tgt_bg_sub_centered, common_circle = _shift_to_circle(
@@ -585,22 +861,37 @@ def explore_background_subtraction(
     plt.close(fig_a2)
 
     # ── Scenario B ────────────────────────────────────────────────────────
+    target_bg_lines = '\n'.join(
+        f'  foil {fid}: bg level (mean of {config.reference_label} foil {fid} '
+        f'inside {config.normalization_radius_fraction:.0%} r, Y > {config.target_bg_y_threshold_mm} mm) '
+        f'= {target_foil_bg_levels[fid]:.6f}'
+        for fid in config.reference_foil_ids)
     report.add_text(
-        f'Scenario B: background subtraction using a fixed scalar level\n\n'
-        f'Background level = average of means from '
+        f'Scenario B: background subtraction\n\n'
+        f'For {config.reference_label} foils (used for normalization):\n'
+        f'  Fixed background level = average of means from '
         f'{config.reference_label} foils {config.background_foil_ids} '
-        f'inside {config.background_radius_fraction:.0%} of radius.\n\n'
+        f'inside {config.background_radius_fraction:.0%} of radius.\n'
         + '\n'.join(
             f'  foil {foil_id}: mean \u2264 '
             f'{config.background_radius_fraction:.0%} r = {background_means[foil_id]:.6f}'
             for foil_id in config.background_foil_ids)
-        + f'\n\nBackground level used for subtraction: {background_level:.6f}\n\n'
-        f'Steps:\n'
-        f'  1. Subtract {background_level:.4f} from all foils.\n'
-        f'  2. Normalize reference foils (divide by mean inside '
+        + f'\n  Background level for reference foils: {background_level:.6f}\n\n'
+        f'For {config.target_label} foils (per-foil background):\n'
+        f'  Each target foil subtracts the mean of the corresponding\n'
+        f'  {config.reference_label} foil, computed inside '
+        f'{config.normalization_radius_fraction:.0%} radius\n'
+        f'  and restricted to pixels with Y > {config.target_bg_y_threshold_mm} mm.\n'
+        + target_bg_lines
+        + f'\n\nSteps:\n'
+        f'  1. Subtract {background_level:.4f} from {config.reference_label} foils 1,2.\n'
+        f'  2. For each {config.target_label} foil, subtract its per-foil bg level\n'
+        f'     (mean of corresponding {config.reference_label} foil, '
+        f'{config.normalization_radius_fraction:.0%} r, Y > {config.target_bg_y_threshold_mm} mm).\n'
+        f'  3. Normalize reference foils (divide by mean inside '
         f'{config.normalization_radius_fraction:.0%} r).\n'
-        f'  3. Apply Gaussian smoothing (\u03c3 = {config.smoothing_sigma_px} px).\n'
-        f'  4. Divide {config.target_label} background-subtracted foil by the '
+        f'  4. Apply Gaussian smoothing (\u03c3 = {config.smoothing_sigma_px} px).\n'
+        f'  5. Divide {config.target_label} background-subtracted foil by the '
         f'normalized, smoothed {config.reference_label} foil.\n'
         f'     Division by zero is recorded as 0.',
         title='\u2501\u2501\u2501  SCENARIO B  \u2501\u2501\u2501',
@@ -624,13 +915,13 @@ def explore_background_subtraction(
                                           config.profile_strip_half_width_px)
     report.add_figure(fig_ref_bg,
                       caption=(f'Scenario B: {config.reference_label} background-subtracted foils '
-                               f'{config.reference_foil_ids} (fixed scalar background level)'),
+                               f'{config.reference_foil_ids} (fixed scalar background level = {background_level:.4f})'),
                       source_paths=[str(reference_npz)])
     plt.close(fig_ref_bg)
 
     target_bg_rows = {
         foil_id: {
-            'image': target_foils[foil_id].image - background_level,
+            'image': target_foils[foil_id].image - target_foil_bg_levels.get(foil_id, background_level),
             'circle': target_foils[foil_id].circle,
         }
         for foil_id in sorted(target_foils)
@@ -643,24 +934,49 @@ def explore_background_subtraction(
                                           config.profile_strip_half_width_px)
     report.add_figure(fig_tgt_bg,
                       caption=(f'Scenario B: {config.target_label} background-subtracted foils '
-                               '(same fixed scalar background level)'),
+                               f'(per-foil background from {config.reference_label} '
+                               f'{config.normalization_radius_fraction:.0%} r, '
+                               f'Y > {config.target_bg_y_threshold_mm} mm)'),
                       source_paths=[str(target_npz)])
     plt.close(fig_tgt_bg)
 
-    fig_b = _plot_scenario_b_rows(config.reference_label,
-                                  config.target_label,
-                                  scenario_b_rows,
-                                  px,
-                                  config.profile_strip_half_width_px,
-                                  config.normalized_contour_levels,
-                                  config.ratio_contour_levels)
-    report.add_figure(fig_b,
-                      caption=('Scenario B: background-subtracted foils from '
-                               f'{config.target_label} divided by normalized\u00d7smoothed '
-                               f'foils from {config.reference_label}, plotted with the same '
-                               'per-foil colorscale as the background-subtracted inputs'),
+    fig_b_norm = _plot_scenario_b_normalized_rows(
+        config.reference_label,
+        scenario_b_rows,
+        px,
+        config.profile_strip_half_width_px,
+        config.normalized_contour_levels)
+    report.add_figure(fig_b_norm,
+                      caption=('Scenario B: normalized\u00d7smoothed foils from '
+                               f'{config.reference_label} with horizontal and vertical profiles'),
+                      source_paths=[str(reference_npz)])
+    plt.close(fig_b_norm)
+
+    fig_b_compare = _plot_scenario_b_bgsub_vs_ratio_rows(
+        config.reference_label,
+        config.target_label,
+        scenario_b_rows,
+        px,
+        config.profile_strip_half_width_px)
+    report.add_figure(fig_b_compare,
+                      caption=('Scenario B: background-subtracted 2D data, divided-result 2D data, '
+                               'and vertical/horizontal profile comparisons for each foil'),
                       source_paths=[str(reference_npz), str(target_npz)])
-    plt.close(fig_b)
+    plt.close(fig_b_compare)
+
+    fig_ab_compare = _plot_scenario_ab_comparison_rows(
+        config.reference_label,
+        config.target_label,
+        scenario_a_rows,
+        scenario_b_rows,
+        px,
+        config.profile_strip_half_width_px,
+        config.scenario_a_contour_levels)
+    report.add_figure(fig_ab_compare,
+                      caption=('Scenario A vs Scenario B: 2D raw signal maps and '
+                               'vertical/horizontal profile comparisons for each foil'),
+                      source_paths=[str(reference_npz), str(target_npz)])
+    plt.close(fig_ab_compare)
 
     normalization_lines = '\n'.join(
         f'foil {foil_id}: normalization mean \u2264 {config.normalization_radius_fraction:.0%} r = '
