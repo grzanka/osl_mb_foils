@@ -146,6 +146,23 @@ def _clamp_nonneg(image: np.ndarray) -> np.ndarray:
     return result
 
 
+def _positive_vmax(*images: np.ndarray) -> float:
+    finite_parts = [image[np.isfinite(image)] for image in images]
+    finite_parts = [part for part in finite_parts if part.size > 0]
+    if not finite_parts:
+        return 1.0
+    finite = np.concatenate(finite_parts)
+    return max(float(np.percentile(finite, 99)), 1.0)
+
+
+def _safe_divide_with_zero(numerator: np.ndarray,
+                           denominator: np.ndarray) -> np.ndarray:
+    result = np.zeros_like(numerator, dtype=np.float64)
+    valid = np.isfinite(numerator) & np.isfinite(denominator) & (denominator != 0.0)
+    np.divide(numerator, denominator, out=result, where=valid)
+    return result
+
+
 
 def _extract_profiles(image: np.ndarray,
                       circle: Circle,
@@ -365,15 +382,11 @@ def _plot_scenario_b_rows(reference_label: str,
         result = rows[foil_id]
         circle = result['circle']
         ratio_img = result['ratio']
-        ratio_norm = _two_slope_around_one(ratio_img)
 
         ref_bg_sub = _clamp_nonneg(result['reference_bg_sub_centered'])
         tgt_bg_sub = _clamp_nonneg(result['target_bg_sub_centered'])
-        ref_finite = ref_bg_sub[np.isfinite(ref_bg_sub)]
-        tgt_finite = tgt_bg_sub[np.isfinite(tgt_bg_sub)]
-        all_finite = np.concatenate([ref_finite, tgt_finite])
-        bg_vmax = float(np.percentile(all_finite, 99)) if all_finite.size > 0 else 1.0
-        bg_vmax = max(bg_vmax, 1.0)
+        ratio_plot = _clamp_nonneg(ratio_img)
+        bg_vmax = _positive_vmax(ref_bg_sub, tgt_bg_sub)
 
         _plot_image(axes[row][0],
                     ref_bg_sub,
@@ -396,17 +409,18 @@ def _plot_scenario_b_rows(reference_label: str,
                     title=f'{target_label} foil {foil_id} bg-sub',
                     cmap=_WGR_CMAP, vmin=0.0, vmax=bg_vmax)
         _plot_image(axes[row][3],
-                    ratio_img,
+                    ratio_plot,
                     circle, px,
                     title=f'{target_label} / norm×smoothed {reference_label}\nfoil {foil_id}',
-                    contour_levels=ratio_contours,
-                    cmap='coolwarm',
-                    norm=ratio_norm)
-        hx, hv, vx, vv = _extract_profiles(ratio_img, circle, px,
+                    contour_levels=None,
+                    cmap=_WGR_CMAP,
+                    vmin=0.0,
+                    vmax=bg_vmax)
+        hx, hv, vx, vv = _extract_profiles(ratio_plot, circle, px,
                                             strip_half_width_px)
         _plot_profiles_combined(axes[row][4], hx, hv, vx, vv,
                                 title=f'Foil {foil_id} ratio profiles',
-                                reference_line=1.0)
+                                reference_line=0.0)
     fig.suptitle(f'Scenario B — Ratio: {target_label} / normalized {reference_label}',
                  fontweight='bold', fontsize=12)
     fig.tight_layout()
@@ -504,16 +518,13 @@ def explore_background_subtraction(
 
         normalization_mean = _circle_mean(ref_bg_sub_centered, common_circle,
                                           config.normalization_radius_fraction)
-        normalized = ref_bg_sub_centered / normalization_mean
+        if normalization_mean == 0.0 or not np.isfinite(normalization_mean):
+            normalized = np.zeros_like(ref_bg_sub_centered, dtype=np.float64)
+        else:
+            normalized = ref_bg_sub_centered / normalization_mean
         normalized_smoothed = ndi.gaussian_filter(normalized,
                                                   sigma=config.smoothing_sigma_px)
-        ratio = np.full_like(tgt_bg_sub_centered, np.nan, dtype=np.float64)
-        valid = np.isfinite(normalized_smoothed) & (
-            np.abs(normalized_smoothed) >= config.minimum_divisor)
-        np.divide(tgt_bg_sub_centered,
-                  normalized_smoothed,
-                  out=ratio,
-                  where=valid)
+        ratio = _safe_divide_with_zero(tgt_bg_sub_centered, normalized_smoothed)
         ratio[~_radius_mask(ratio.shape, common_circle,
                             config.ratio_mask_radius_fraction)] = np.nan
 
@@ -589,7 +600,9 @@ def explore_background_subtraction(
         f'  2. Normalize reference foils (divide by mean inside '
         f'{config.normalization_radius_fraction:.0%} r).\n'
         f'  3. Apply Gaussian smoothing (\u03c3 = {config.smoothing_sigma_px} px).\n'
-        f'  4. Divide target foil by the normalized, smoothed reference foil.',
+        f'  4. Divide {config.target_label} background-subtracted foil by the '
+        f'normalized, smoothed {config.reference_label} foil.\n'
+        f'     Division by zero is recorded as 0.',
         title='\u2501\u2501\u2501  SCENARIO B  \u2501\u2501\u2501',
         source_paths=[str(reference_npz), str(target_npz)])
 
@@ -642,9 +655,10 @@ def explore_background_subtraction(
                                   config.normalized_contour_levels,
                                   config.ratio_contour_levels)
     report.add_figure(fig_b,
-                      caption=('Scenario B: normalized\u00d7smoothed reference foils from '
-                               f'{config.reference_label}, ratio with '
-                               f'{config.target_label} foils'),
+                      caption=('Scenario B: background-subtracted foils from '
+                               f'{config.target_label} divided by normalized\u00d7smoothed '
+                               f'foils from {config.reference_label}, plotted with the same '
+                               'per-foil colorscale as the background-subtracted inputs'),
                       source_paths=[str(reference_npz), str(target_npz)])
     plt.close(fig_b)
 

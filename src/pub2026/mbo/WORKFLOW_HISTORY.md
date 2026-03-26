@@ -69,3 +69,30 @@ Document my prompt and your actions.
 - Restructured `explore_background_subtraction()` PDF page order: scenario A section first (header + page 1 + page 2), then scenario B section (header with background level info + background-source foils + bg-subtracted images + ratio figure + normalization details).
 - Updated `scenario_a_contour_levels` to positive values only `[25, 50, 100, 200, 300]`.
 - Verified: `poetry run pytest` — 34 passed; pipeline re-run produced updated PDF and NPZ.
+
+---
+
+## 2026-03-26: Scenario B division and colorscale alignment
+
+### User prompt
+
+In scenario B you should take foil 1 and 2 "bg -sub" from 03-13 and divide it by 03-17 foil 1 and 2 (respectively) "normalized x smoothed".
+
+I see that the normalized foil have values somehow close to 0.9...1.1 range, therefore I wouln not expect that the result should be so different from what was before division.
+
+If division by zero happens, put there as a result zero, instead of not-a-number.
+
+Also - the result after division should be plotted exactly with same colorscale as before, keeping even sam max color value for the same foil number.
+
+Document my prompt and your actions.
+
+### Actions taken
+
+- Kept scenario B as background-subtracted target foil divided by normalized×smoothed reference foil, matching the configured 03-17 and 03-19 datasets already used by this pipeline.
+- Added `_safe_divide_with_zero()` so invalid divisions now default to `0.0` instead of `NaN`.
+- Added `_positive_vmax()` so each scenario B ratio plot reuses the same per-foil `vmax` as the corresponding background-subtracted images.
+- Updated `_plot_scenario_b_rows()` so the division result is rendered with the same white→green→red colorscale and `vmin=0` / shared `vmax`, instead of the previous ratio-centered `coolwarm` scale.
+- Updated scenario B profile extraction to use the plotted division result, so the profile view now matches the image view.
+- Added a regression test that forces zero division and verifies the stored ratio values are `0.0` wherever the division is invalid.
+- Re-ran tests: `35 passed`.
+- Re-ran the pipeline with Poetry and regenerated the scenario B PDF and NPZ outputs successfully.

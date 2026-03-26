@@ -73,3 +73,50 @@ def test_background_subtraction_pipeline_centers_and_saves(tmp_path):
     assert np.isclose(saved['background_level'], 5.0)
     assert np.nanmax(np.abs(saved['scenario_a_foil_1_difference'])) < 1.0
     assert np.nanmax(np.abs(saved['scenario_a_foil_2_difference'])) < 1.0
+
+    center_y = int(round(float(saved['scenario_b_foil_1_circle_y'])))
+    center_x = int(round(float(saved['scenario_b_foil_1_circle_x'])))
+    assert np.isfinite(saved['scenario_b_foil_1_ratio'][center_y, center_x])
+
+
+def test_background_subtraction_sets_zero_when_dividing_by_zero(tmp_path):
+    shape = (32, 32)
+    circle = Circle(x=16.0, y=16.0, r=10.0)
+    circles = {1: circle, 2: circle, 3: circle, 4: circle}
+
+    images_ref = {
+        1: np.full(shape, 5.0),
+        2: _gaussian(shape, circle, amplitude=10.0, sigma=4.0, background=5.0),
+        3: np.full(shape, 5.0),
+        4: np.full(shape, 5.0),
+    }
+    images_tgt = {
+        1: np.full(shape, 8.0),
+        2: _gaussian(shape, circle, amplitude=10.0, sigma=4.0, background=5.0),
+        3: np.full(shape, 5.0),
+        4: np.full(shape, 5.0),
+    }
+
+    reference_npz = tmp_path / 'mbo_align_ref_zero.npz'
+    target_npz = tmp_path / 'mbo_align_target_zero.npz'
+    _write_aligned_npz(reference_npz, circles, images_ref)
+    _write_aligned_npz(target_npz, circles, images_tgt)
+
+    config = MBOBackgroundSubtractionConfig(
+        facility='synthetic-zero-division',
+        reference_npz=str(reference_npz),
+        target_npz=str(target_npz),
+        reference_label='03-17',
+        target_label='03-19',
+        output_npz='synthetic_zero_bg.npz',
+        smoothing_sigma_px=1.0,
+    )
+
+    result = explore_background_subtraction(config,
+                                            output_dir=str(tmp_path),
+                                            pdf_path=str(tmp_path / 'synthetic_zero.pdf'))
+
+    saved = np.load(result['output_npz'])
+    ratio = saved['scenario_b_foil_1_ratio']
+    mask = np.isfinite(ratio)
+    assert np.all(ratio[mask] == 0.0)
