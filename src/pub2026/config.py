@@ -35,9 +35,8 @@ def resolve_file(path: str, output_dir: Path) -> Path:
         return fallback
     # Search sibling module data directories (for structured output layout)
     # e.g. output_dir = .../comparisons/data, look in .../mc/data, .../ebt/data etc.
-    parent = output_dir.parent
-    if parent.name in ('data', 'reports'):
-        base = parent.parent
+    if output_dir.name in ('data', 'reports'):
+        base = output_dir.parent.parent
         for module in ('mc', 'ebt', 'mbo', 'comparisons'):
             candidate = base / module / 'data' / p.name
             if candidate.exists():
