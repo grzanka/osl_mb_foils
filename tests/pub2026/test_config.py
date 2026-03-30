@@ -27,7 +27,7 @@ class TestConfigClasses:
     """Test all config dataclass constructors and resolve_paths."""
 
     def test_all_config_classes_registered(self):
-        assert len(CONFIG_CLASSES) == 13
+        assert len(CONFIG_CLASSES) == 14
         expected = {
             "mc_depth_validation",
             "mc_wedge",
@@ -40,6 +40,7 @@ class TestConfigClasses:
             "mbo_raw_survey",
             "mbo_align",
             "mbo_background_subtraction",
+            "mbo_background_subtraction_merge",
             "comparison_facility",
             "comparison_summary",
         }

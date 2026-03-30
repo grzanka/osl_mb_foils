@@ -43,6 +43,22 @@ Key parameters:
 - `reference_dose_gy`: Dose value for normalization
 - `reference_x_mm`: Position for normalization
 
+### background_subtraction_merge.py — `mbo_background_subtraction_merge`
+
+Merges two adjacent foils after background subtraction. Takes per-foil images from the background-subtraction step (Scenario A difference and Scenario B ratio), detects edges on original aligned images, and merges the foil pairs into panoramic images. Produces two merges per scenario: a simple merge and a shift-optimised merge where the inter-foil distance is adjusted to best match a smooth depth-dose profile shape.
+
+**Input:** Background subtraction NPZ + aligned NPZ files (reference and target)
+**Output:** PDF with merged 2D images, horizontal profiles at multiple Y offsets, RSS optimisation plots; NPZ with merged images
+
+Key parameters:
+- `bg_subtraction_npz`: NPZ from the background subtraction step
+- `reference_npz` / `target_npz`: Aligned NPZs (for edge detection)
+- `foil_ids`: Which foils to merge (left, right)
+- `edge_threshold`: Threshold for edge detection on aligned images
+- `profile_y_offsets_mm`: Y offsets from circle centre for profile extraction
+- `section1/2_x_min/max`: Horizontal sections for spline shift optimisation
+- `vmax_scenario_a` / `vmax_scenario_b`: Intensity limits for visualisation
+
 ## Config Files
 
 | File | Description |
@@ -52,3 +68,4 @@ Key parameters:
 | match_aic144.yaml | AIC-144 two-foil matching (foils 1 & 2) |
 | match_ccb.yaml | CCB two-foil matching (foils 2 & 3) |
 | comparison.yaml | Cross-facility MBO comparison |
+| post_align_bg_sub_merge_ccb.yaml | CCB foil merge after background subtraction |

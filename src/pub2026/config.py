@@ -382,6 +382,57 @@ class MBOBackgroundSubtractionConfig:
         return self
 
 
+@dataclass
+class MBOBackgroundSubtractionMergeConfig:
+    """Config for merging foils after background subtraction (scenarios A & B)."""
+    facility: str = "ccb_2026-03-17_2026-03-19"
+    bg_subtraction_npz: str = ""
+    reference_npz: str = ""
+    target_npz: str = ""
+    pixel_size_mm: float = 0.074
+    foil_ids: List[int] = field(default_factory=lambda: [1, 2])
+    edge_threshold: float = 400.0
+    edge_x_positions_mm: List[float] = field(
+        default_factory=lambda: [10, 12, 14, 16, 18, 20, 22, 24, 26, 28])
+    edge_stripe_width_mm: float = 0.74
+    crop_size: int = 300
+    merge_margin: int = 0
+    vmax_scenario_a: float = 300.0
+    vmax_scenario_b: float = 2.0
+    white_threshold: float = 0.05
+    circle_gradient_high: float = 400.0
+    circle_gradient_low: float = 50.0
+    circle_edge_distance_mm: float = 0.7
+    circle_radius_tolerance: float = 0.05
+    profile_y_offsets_mm: List[float] = field(
+        default_factory=lambda: [-4.0, -2.0, 0.0, 2.0, 4.0])
+    profile_strip_width_mm: float = 1.0
+    profile_y_min_mm: float = 10.0
+    profile_y_max_mm: float = 16.0
+    section1_x_min: float = 3.0
+    section1_x_max: float = 15.0
+    section2_x_min: float = 25.0
+    section2_x_max: float = 37.0
+    smoothing_sigma_px: int = 3
+    scenario_a_contour_levels: List[float] = field(
+        default_factory=lambda: [25.0, 50.0, 100.0, 200.0, 300.0])
+    scenario_b_contour_levels: List[float] = field(
+        default_factory=lambda: [0.9, 0.95, 1.0, 1.05, 1.1])
+    output_height_mm: float = 25.0
+    output_width_mm: float = 40.0
+    output_npz: str = ""
+    output_profile_npz: str = ""
+    data_root: str = ""
+
+    def resolve_paths(self) -> "MBOBackgroundSubtractionMergeConfig":
+        root = Path(self.data_root) if self.data_root else _resolve_data_root()
+        for attr in ("bg_subtraction_npz", "reference_npz", "target_npz"):
+            val = getattr(self, attr)
+            if val and not Path(val).is_absolute():
+                setattr(self, attr, str(root / val))
+        return self
+
+
 # Map of config type names to classes
 CONFIG_CLASSES = {
     "mc_depth_validation": MCDepthValidationConfig,
@@ -395,6 +446,7 @@ CONFIG_CLASSES = {
     "mbo_raw_survey": MBORawSurveyConfig,
     "mbo_align": MBOAlignConfig,
     "mbo_background_subtraction": MBOBackgroundSubtractionConfig,
+    "mbo_background_subtraction_merge": MBOBackgroundSubtractionMergeConfig,
     "comparison_facility": ComparisonFacilityConfig,
     "comparison_summary": ComparisonSummaryConfig,
 }

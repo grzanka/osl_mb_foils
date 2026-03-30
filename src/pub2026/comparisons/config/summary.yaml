@@ -3,6 +3,6 @@ mc_ccb_csv: mc_ccb_big.csv
 mc_aic144_csv: mc_aic144_big.csv
 ebt_ccb_csv: ebt_profile_ccb.csv
 ebt_aic144_csv: ebt_profile_aic144.csv
-mbo_ccb_npz: foils_mbo_ccb/2026-02-20/profile_foils_2_3.npz
+mbo_ccb_npz: mbo_bg_sub_profile_ccb_2026-03-17_2026-03-19.npz
 mbo_aic144_npz: foils_mbo_aic144/2025-10-09/profile_foils_1_2.npz
 reference_dose_gy: 5.0
