@@ -250,7 +250,6 @@ class ComparisonFacilityConfig:
     mc_csv: str = ""
     ebt_csv: str = ""
     mbo_npz: str = ""
-    mbo_single_foil_npz: Optional[str] = None
     normalize_at_x: float = 0.0
     mbo_gap_exclude_min_mm: Optional[float] = None
     mbo_gap_exclude_max_mm: Optional[float] = None
@@ -262,9 +261,6 @@ class ComparisonFacilityConfig:
             val = getattr(self, attr)
             if val and not Path(val).is_absolute():
                 setattr(self, attr, str(root / val))
-        if self.mbo_single_foil_npz and not Path(
-                self.mbo_single_foil_npz).is_absolute():
-            self.mbo_single_foil_npz = str(root / self.mbo_single_foil_npz)
         return self
 
 

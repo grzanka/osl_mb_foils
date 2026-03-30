@@ -4,7 +4,7 @@ Ported from notebooks: 1.0-aic144-comparisons.ipynb, 1.0-ccb-comparisons.ipynb
 """
 
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -66,102 +66,83 @@ def compare_facility(config: ComparisonFacilityConfig,
     mbo_x_sh, mbo_scaled = align_mbo_to_reference(
         mbo_x, mbo_y, ebt_max_x, ebt_interp, match_x=config.normalize_at_x)
 
-    # Optional single-foil MBO
-    mbo_single_x_sh = mbo_single_scaled = None
-    if config.mbo_single_foil_npz:
-        mbo_s = np.load(str(resolve_file(config.mbo_single_foil_npz, out)))
-        sx = mbo_s.get('profile_x_mm', mbo_s.get('x_mm'))
-        sy = mbo_s.get('profile_values', mbo_s.get('profile_opt_smooth'))
-        mbo_single_x_sh, mbo_single_scaled = align_mbo_to_reference(
-            sx, sy, ebt_max_x, ebt_interp, match_x=config.normalize_at_x)
-
     # -- Plots --
-    profiles: List[Tuple[str, np.ndarray, np.ndarray, str]] = [
+    mbo_label = 'MBO'
+    mbo_color = 'blue'
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.plot(df_ebt['x_mm'], df_ebt['dose_Gy'], 'k-', lw=1.5, label='EBT3')
+    ax.plot(df_mc['depth'],
+            mc_dose_scaled,
+            'r-',
+            lw=1.5,
+            label='MC (scaled)')
+
+    if config.mbo_gap_exclude_min_mm is not None:
+        yp_gap = mbo_scaled.copy()
+        mask = (mbo_x_sh >= config.mbo_gap_exclude_min_mm) & (
+            mbo_x_sh <= config.mbo_gap_exclude_max_mm)
+        yp_gap[mask] = np.nan
+        ax.plot(mbo_x_sh,
+                yp_gap,
+                color=mbo_color,
+                lw=1.5,
+                label=f'{mbo_label} (scaled)')
+    else:
+        ax.plot(mbo_x_sh,
+                mbo_scaled,
+                color=mbo_color,
+                lw=1.5,
+                label=f'{mbo_label} (scaled)')
+
+    ax.axvline(x=config.normalize_at_x,
+               color='gray',
+               ls='--',
+               lw=1,
+               alpha=0.5)
+
+    # FWHM lines + metrics box
+    metrics_text = []
+    for name, xp, yp, col in [
         ('EBT3', df_ebt['x_mm'].values, df_ebt['dose_Gy'].values, 'black'),
         ('MC', df_mc['depth'].values, mc_dose_scaled, 'red'),
-    ]
-    if mbo_single_scaled is not None:
-        profiles.append(
-            ('MBO (single)', mbo_single_x_sh, mbo_single_scaled, 'blue'))
-    profiles.append(
-        ('MBO (two-foil)' if mbo_single_scaled is not None else 'MBO',
-         mbo_x_sh, mbo_scaled,
-         'green' if mbo_single_scaled is not None else 'blue'))
+        (mbo_label, mbo_x_sh, mbo_scaled, mbo_color)
+    ]:
+        xd, yd = get_dense(xp, yp)
+        fw, xl, xr, hm = find_fwhm_dense(xd, yd)
+        if fw is not None and xl is not None:
+            ax.hlines(hm, xl, xr, colors=col, lw=2)
+            ax.vlines([xl, xr], 0, hm, colors=col, ls=':', lw=1, alpha=0.7)
+        x90 = find_distal_pct_dense(xd, yd, 0.9)
+        fw_s = f'{fw:.2f}' if fw is not None else 'N/A'
+        x90_s = f'{x90:.2f}' if x90 is not None else 'N/A'
+        metrics_text.append(f'{name}: FWHM={fw_s} mm, R90={x90_s} mm')
 
-    for mbo_label, mbo_xp, mbo_yp, mbo_color in profiles[2:]:
-        fig, ax = plt.subplots(figsize=(10, 6))
-        ax.plot(df_ebt['x_mm'], df_ebt['dose_Gy'], 'k-', lw=1.5, label='EBT3')
-        ax.plot(df_mc['depth'],
-                mc_dose_scaled,
-                'r-',
-                lw=1.5,
-                label='MC (scaled)')
+    ax.text(0.03,
+            0.5,
+            '\n'.join(metrics_text),
+            transform=ax.transAxes,
+            fontsize=9,
+            va='center',
+            ha='left',
+            bbox=dict(boxstyle='round',
+                      facecolor='white',
+                      alpha=0.9,
+                      edgecolor='gray'),
+            family='monospace')
 
-        if config.mbo_gap_exclude_min_mm is not None:
-            yp_gap = mbo_yp.copy()
-            mask = (mbo_xp >= config.mbo_gap_exclude_min_mm) & (
-                mbo_xp <= config.mbo_gap_exclude_max_mm)
-            yp_gap[mask] = np.nan
-            ax.plot(mbo_xp,
-                    yp_gap,
-                    color=mbo_color,
-                    lw=1.5,
-                    label=f'{mbo_label} (scaled)')
-        else:
-            ax.plot(mbo_xp,
-                    mbo_yp,
-                    color=mbo_color,
-                    lw=1.5,
-                    label=f'{mbo_label} (scaled)')
-
-        ax.axvline(x=config.normalize_at_x,
-                   color='gray',
-                   ls='--',
-                   lw=1,
-                   alpha=0.5)
-
-        # FWHM lines + metrics box
-        metrics_text = []
-        for name, xp, yp, col in [
-            ('EBT3', df_ebt['x_mm'].values, df_ebt['dose_Gy'].values, 'black'),
-            ('MC', df_mc['depth'].values, mc_dose_scaled, 'red'),
-            (mbo_label, mbo_xp, mbo_yp, mbo_color)
-        ]:
-            xd, yd = get_dense(xp, yp)
-            fw, xl, xr, hm = find_fwhm_dense(xd, yd)
-            if fw is not None and xl is not None:
-                ax.hlines(hm, xl, xr, colors=col, lw=2)
-                ax.vlines([xl, xr], 0, hm, colors=col, ls=':', lw=1, alpha=0.7)
-            x90 = find_distal_pct_dense(xd, yd, 0.9)
-            fw_s = f'{fw:.2f}' if fw is not None else 'N/A'
-            x90_s = f'{x90:.2f}' if x90 is not None else 'N/A'
-            metrics_text.append(f'{name}: FWHM={fw_s} mm, R90={x90_s} mm')
-
-        ax.text(0.03,
-                0.5,
-                '\n'.join(metrics_text),
-                transform=ax.transAxes,
-                fontsize=9,
-                va='center',
-                ha='left',
-                bbox=dict(boxstyle='round',
-                          facecolor='white',
-                          alpha=0.9,
-                          edgecolor='gray'),
-                family='monospace')
-
-        ax.set(xlabel='X [mm]',
-               ylabel='Dose [Gy]',
-               title=f'{facility.upper()}: MC vs EBT3 vs {mbo_label}',
-               xlim=(-10, 30),
-               ylim=(0, None))
-        ax.legend(loc='upper left', fontsize=11)
-        ax.grid(True, alpha=0.3)
-        fig.tight_layout()
-        report.add_figure(
-            fig,
-            caption=f'Dose profiles with {mbo_label}',
-            source_paths=[config.mc_csv, config.ebt_csv, config.mbo_npz])
+    ax.set(xlabel='X [mm]',
+           ylabel='Dose [Gy]',
+           title=f'{facility.upper()}: MC vs EBT3 vs {mbo_label}',
+           xlim=(-10, 30),
+           ylim=(0, None))
+    ax.legend(loc='upper left', fontsize=11)
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    report.add_figure(
+        fig,
+        caption=f'Dose profiles with {mbo_label}',
+        source_paths=[config.mc_csv, config.ebt_csv, config.mbo_npz])
 
     # Summary metrics table
     rows = []
@@ -180,22 +161,11 @@ def compare_facility(config: ComparisonFacilityConfig,
             'Max/Dose@X=0': float(yd.max()) / dat0 if dat0 != 0 else None,
             'Penumbra 80-20% [mm]': m['penumbra_80_20'],
         })
-    if mbo_single_scaled is not None:
-        m = all_metrics_dense(mbo_single_x_sh, mbo_single_scaled)
-        xd, yd = get_dense(mbo_single_x_sh, mbo_single_scaled)
-        dat0 = float(
-            interp1d(mbo_single_x_sh,
-                     mbo_single_scaled,
-                     fill_value='extrapolate')(config.normalize_at_x))
-        rows.append({
-            'Profile': 'MBO (single)',
-            'FWHM [mm]': m['fwhm'],
-            'Range (90%) [mm]': m['x90'],
-            'Max/Dose@X=0': float(yd.max()) / dat0 if dat0 != 0 else None,
-            'Penumbra 80-20% [mm]': m['penumbra_80_20'],
-        })
 
     df_metrics = pd.DataFrame(rows)
+    # Round numeric columns to 2 decimal places for display
+    num_cols = df_metrics.select_dtypes(include='number').columns
+    df_metrics[num_cols] = df_metrics[num_cols].round(2)
     report.add_table(df_metrics, title=f'{facility.upper()} Profile Metrics')
     report.save()
     print(f"PDF saved to: {pdf_path}")

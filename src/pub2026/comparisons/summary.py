@@ -227,6 +227,9 @@ def compare_summary(config: ComparisonSummaryConfig,
         })
 
     df_all = pd.DataFrame(rows)
+    # Round numeric columns to 2 decimal places for display
+    num_cols = df_all.select_dtypes(include='number').columns
+    df_all[num_cols] = df_all[num_cols].round(2)
     report.add_table(df_all, title='Summary Metrics')
 
     # Differences text

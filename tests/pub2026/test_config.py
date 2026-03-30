@@ -145,22 +145,11 @@ class TestConfigClasses:
             mc_csv="mc.csv",
             ebt_csv="ebt.csv",
             mbo_npz="mbo.npz",
-            mbo_single_foil_npz="single.npz",
             data_root=str(tmp_path),
         )
         cfg.resolve_paths()
         assert cfg.mc_csv == str(tmp_path / "mc.csv")
-        assert cfg.mbo_single_foil_npz == str(tmp_path / "single.npz")
-
-    def test_comparison_facility_optional_single_foil(self, tmp_path):
-        cfg = ComparisonFacilityConfig(
-            mc_csv="mc.csv",
-            ebt_csv="ebt.csv",
-            mbo_npz="mbo.npz",
-            data_root=str(tmp_path),
-        )
-        cfg.resolve_paths()
-        assert cfg.mbo_single_foil_npz is None
+        assert cfg.mbo_npz == str(tmp_path / "mbo.npz")
 
     def test_comparison_summary_resolve_paths(self, tmp_path):
         cfg = ComparisonSummaryConfig(

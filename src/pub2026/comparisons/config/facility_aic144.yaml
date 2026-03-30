@@ -3,5 +3,4 @@ facility: aic144
 mc_csv: mc_aic144_big.csv
 ebt_csv: ebt_profile_aic144.csv
 mbo_npz: foils_mbo_aic144/2025-10-09/profile_foils_1_2.npz
-mbo_single_foil_npz: foils_mbo_aic144/2025-11-25/mbo_aic144_single_foil_rotated.npz
 normalize_at_x: 0.0

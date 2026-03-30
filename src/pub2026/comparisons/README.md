@@ -8,12 +8,11 @@ Combines MC simulation, EBT3 film, and MBO foil detector measurements for cross-
 
 Loads processed data from all three modalities for a single facility, scales MC and MBO profiles to match EBT3 dose at a reference position, and generates overlay plots with FWHM and range annotations.
 
-**Input:** MC CSV, EBT CSV, MBO NPZ (optionally single-foil MBO NPZ)
+**Input:** MC CSV, EBT CSV, MBO NPZ
 **Output:** PDF with scaled overlays, metrics boxes, summary table
 
 Key parameters:
 - `normalize_at_x`: X position (mm) where MC and MBO are scaled to match EBT dose
-- `mbo_single_foil_npz`: Optional single-foil MBO data (AIC-144 only)
 - `mbo_gap_exclude_min_mm` / `mbo_gap_exclude_max_mm`: MBO gap region to exclude (CCB only, 9–16 mm)
 
 ### summary.py — `comparison_summary`
