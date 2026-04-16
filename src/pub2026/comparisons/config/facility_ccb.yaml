@@ -4,5 +4,5 @@ mc_csv: mc_ccb_big.csv
 ebt_csv: ebt_profile_ccb.csv
 mbo_npz: mbo_bg_sub_profile_ccb_2026-03-17_2026-03-19.npz
 normalize_at_x: 0.0
-mbo_gap_exclude_min_mm: 9.0
+mbo_gap_exclude_min_mm: 15.9
 mbo_gap_exclude_max_mm: 16.0

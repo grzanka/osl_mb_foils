@@ -274,6 +274,10 @@ class ComparisonSummaryConfig:
     mbo_aic144_npz: str = ""
     mbo_ccb_npz: str = ""
     reference_dose_gy: float = 5.0
+    mbo_ccb_gap_exclude_min_mm: Optional[float] = None
+    mbo_ccb_gap_exclude_max_mm: Optional[float] = None
+    mbo_aic144_gap_exclude_min_mm: Optional[float] = None
+    mbo_aic144_gap_exclude_max_mm: Optional[float] = None
     data_root: str = ""
 
     def resolve_paths(self) -> "ComparisonSummaryConfig":

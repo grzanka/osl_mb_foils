@@ -73,6 +73,22 @@ def compare_summary(config: ComparisonSummaryConfig,
     mc_ccb_sc = mc_ccb['dose'].values * s_ccb
     mc_aic_sc = mc_aic['dose'].values * s_aic
 
+    # -- Apply MBO gap exclusion (NaN out excluded region for plotting) --
+    def _apply_gap(xp, yp, gap_min, gap_max):
+        """Return a copy of *yp* with values in [gap_min, gap_max] set to NaN."""
+        if gap_min is None or gap_max is None:
+            return yp
+        yp_out = yp.copy()
+        yp_out[(xp >= gap_min) & (xp <= gap_max)] = np.nan
+        return yp_out
+
+    mbo_ccb_sc_plot = _apply_gap(mbo_ccb_xs, mbo_ccb_sc,
+                                 config.mbo_ccb_gap_exclude_min_mm,
+                                 config.mbo_ccb_gap_exclude_max_mm)
+    mbo_aic_sc_plot = _apply_gap(mbo_aic_xs, mbo_aic_sc,
+                                 config.mbo_aic144_gap_exclude_min_mm,
+                                 config.mbo_aic144_gap_exclude_max_mm)
+
     # -- Per-modality cross-facility plots (EBT, MBO, MC) --
     for title, pairs in [
         ('EBT3', [
@@ -80,8 +96,8 @@ def compare_summary(config: ComparisonSummaryConfig,
             ('AIC144', ebt_aic['x_mm'].values, ebt_aic['dose_Gy'].values, 'r'),
         ]),
         ('MBO', [
-            ('CCB', mbo_ccb_xs, mbo_ccb_sc, 'b'),
-            ('AIC144', mbo_aic_xs, mbo_aic_sc, 'r'),
+            ('CCB', mbo_ccb_xs, mbo_ccb_sc_plot, 'b'),
+            ('AIC144', mbo_aic_xs, mbo_aic_sc_plot, 'r'),
         ]),
         ('MC', [
             ('CCB', mc_ccb['depth'].values, mc_ccb_sc, 'b'),
@@ -129,16 +145,16 @@ def compare_summary(config: ComparisonSummaryConfig,
         ('EBT3 vs MBO', [
             ('CCB', [('EBT3', ebt_ccb['x_mm'].values,
                       ebt_ccb['dose_Gy'].values, 'k'),
-                     ('MBO', mbo_ccb_xs, mbo_ccb_sc, 'b')]),
+                     ('MBO', mbo_ccb_xs, mbo_ccb_sc_plot, 'b')]),
             ('AIC144', [('EBT3', ebt_aic['x_mm'].values,
                          ebt_aic['dose_Gy'].values, 'k'),
-                        ('MBO', mbo_aic_xs, mbo_aic_sc, 'b')]),
+                        ('MBO', mbo_aic_xs, mbo_aic_sc_plot, 'b')]),
         ]),
         ('MC vs MBO', [
             ('CCB', [('MC', mc_ccb['depth'].values, mc_ccb_sc, 'r'),
-                     ('MBO', mbo_ccb_xs, mbo_ccb_sc, 'b')]),
+                     ('MBO', mbo_ccb_xs, mbo_ccb_sc_plot, 'b')]),
             ('AIC144', [('MC', mc_aic['depth'].values, mc_aic_sc, 'r'),
-                        ('MBO', mbo_aic_xs, mbo_aic_sc, 'b')]),
+                        ('MBO', mbo_aic_xs, mbo_aic_sc_plot, 'b')]),
         ]),
     ]:
         fig, axes = plt.subplots(1, 2, figsize=(14, 5))
@@ -177,20 +193,20 @@ def compare_summary(config: ComparisonSummaryConfig,
     fig, ax = plt.subplots(figsize=(14, 8))
     for col, fac, pairs in [
         ('b', 'CCB', [
-            (mbo_ccb_xs, mbo_ccb_sc, '-', 'CCB - MBO'),
+            (mbo_ccb_xs, mbo_ccb_sc_plot, '-', 'CCB - MBO'),
             (ebt_ccb['x_mm'].values, ebt_ccb['dose_Gy'].values, '--',
              'CCB - EBT3'),
             (mc_ccb['depth'].values, mc_ccb_sc, ':', 'CCB - MC'),
         ]),
         ('r', 'AIC144', [
-            (mbo_aic_xs, mbo_aic_sc, '-', 'AIC144 - MBO'),
+            (mbo_aic_xs, mbo_aic_sc_plot, '-', 'AIC144 - MBO'),
             (ebt_aic['x_mm'].values, ebt_aic['dose_Gy'].values, '--',
              'AIC144 - EBT3'),
             (mc_aic['depth'].values, mc_aic_sc, ':', 'AIC144 - MC'),
         ]),
     ]:
         for xp, yp, ls, label in pairs:
-            yn = yp / yp.max()
+            yn = yp / np.nanmax(yp)
             ax.plot(xp, yn, color=col, ls=ls, lw=2, label=label)
     ax.axvline(0, color='gray', ls=':', lw=1, alpha=0.5)
     ax.axhline(0.5, color='gray', ls=':', lw=1, alpha=0.3)

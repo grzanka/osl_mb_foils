@@ -4,3 +4,5 @@ mc_csv: mc_aic144_big.csv
 ebt_csv: ebt_profile_aic144.csv
 mbo_npz: foils_mbo_aic144/2025-10-09/profile_foils_1_2.npz
 normalize_at_x: 0.0
+mbo_gap_exclude_min_mm: 13.0
+mbo_gap_exclude_max_mm: 15.0
