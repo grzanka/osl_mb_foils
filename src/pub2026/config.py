@@ -357,14 +357,16 @@ class MBOBackgroundSubtractionConfig:
     background_foil_ids: List[int] = field(default_factory=lambda: [3, 4])
     background_radius_fraction: float = 0.8
     normalization_radius_fraction: float = 0.9
+    stage1_normalization_radius_fraction: float = 0.5
+    renormalization_threshold: float = 0.8
     smoothing_sigma_px: float = 6.0
     profile_strip_half_width_px: int = 5
     minimum_divisor: float = 0.5
     ratio_mask_radius_fraction: float = 1.0
     target_bg_y_threshold_mm: float = 7.0
-    scenario_a_contour_levels: List[float] = field(
-        default_factory=lambda: [-300.0, -200.0, -100.0, -50.0, -25.0,
-                                 25.0, 50.0, 100.0, 200.0, 300.0])
+    scenario_a_contour_levels: List[float] = field(default_factory=lambda: [
+        -300.0, -200.0, -100.0, -50.0, -25.0, 25.0, 50.0, 100.0, 200.0, 300.0
+    ])
     normalized_contour_levels: List[float] = field(
         default_factory=lambda: [0.9, 0.95, 1.0, 1.05, 1.1])
     ratio_contour_levels: List[float] = field(
