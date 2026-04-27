@@ -137,7 +137,14 @@ def test_background_subtraction_sets_zero_when_dividing_by_zero(tmp_path):
     saved = np.load(result['output_npz'])
     ratio = saved['scenario_b_foil_1_ratio']
     mask = np.isfinite(ratio)
-    assert np.all(ratio[mask] == 0.0)
+    # Reference foil 1 is uniformly at the background level, so after
+    # subtraction the interior signal stays below `interior_signal_threshold`.
+    # The divisor therefore falls back to 1.0 outside the (empty) interior and
+    # the target signal is passed through unchanged (target − bg = 8 − 5 = 3).
+    assert np.all(ratio[mask] == 3.0)
+    # Effective divisor is recorded and lies inside the configured clip.
+    eff = saved['scenario_b_foil_1_effective_divisor']
+    assert np.all((eff >= 0.7 - 1e-9) & (eff <= 1.3 + 1e-9))
 
 
 def test_background_subtraction_scenario_b_uses_soft_interior_renormalization(

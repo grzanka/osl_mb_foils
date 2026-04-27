@@ -205,6 +205,28 @@ def _soft_transition_from_mask(mask: np.ndarray,
     return np.clip(weight, 0.0, 1.0)
 
 
+def _overlay_interior_boundary(ax: plt.Axes,
+                               weight: Optional[np.ndarray],
+                               circle: Circle,
+                               px: float,
+                               level: float = 0.5) -> None:
+    """Draw a black contour at ``weight == level`` to mark the region where
+    the Scenario-B correction is effectively applied.
+    """
+    if weight is None or not np.any(np.isfinite(weight)):
+        return
+    finite = weight[np.isfinite(weight)]
+    if finite.size == 0 or finite.min() >= level or finite.max() <= level:
+        return
+    _, x_arr, y_arr = _relative_axes(weight, circle, px)
+    ax.contour(x_arr,
+               y_arr,
+               np.where(np.isfinite(weight), weight, 0.0),
+               levels=[level],
+               colors='black',
+               linewidths=1.2)
+
+
 def _extract_profiles(
     image: np.ndarray, circle: Circle, px: float, strip_half_width_px: int
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -467,6 +489,8 @@ def _plot_scenario_b_normalized_rows(
             contour_levels=normalized_contours,
             cmap='coolwarm',
             norm=ref_norm)
+        _overlay_interior_boundary(axes[row][0], result.get('interior_weight'),
+                                   circle, px)
         hx, hv, vx, vv = _extract_profiles(image, circle, px,
                                            strip_half_width_px)
         _plot_profiles_combined(
@@ -510,6 +534,8 @@ def _plot_scenario_b_normalization_steps_rows(
             contour_levels=normalized_contours,
             cmap='coolwarm',
             norm=ref_norm)
+        _overlay_interior_boundary(axes[row][0], result.get('interior_weight'),
+                                   circle, px)
         _plot_image(
             axes[row][1],
             result['reference_normalized_stage1_smoothed'],
@@ -520,6 +546,8 @@ def _plot_scenario_b_normalization_steps_rows(
             contour_levels=normalized_contours,
             cmap='coolwarm',
             norm=ref_norm)
+        _overlay_interior_boundary(axes[row][1], result.get('interior_weight'),
+                                   circle, px)
 
         threshold_mask = np.where(result['renormalization_mask'], 1.0, np.nan)
         _plot_image(
@@ -544,6 +572,8 @@ def _plot_scenario_b_normalization_steps_rows(
             contour_levels=normalized_contours,
             cmap='coolwarm',
             norm=ref_norm)
+        _overlay_interior_boundary(axes[row][3], result.get('interior_weight'),
+                                   circle, px)
 
         hx, hv, vx, vv = _extract_profiles(
             result['reference_normalized_smoothed'], circle, px,
@@ -558,6 +588,137 @@ def _plot_scenario_b_normalization_steps_rows(
     fig.suptitle(f'Scenario B - {reference_label} normalization steps',
                  fontweight='bold',
                  fontsize=12)
+    fig.tight_layout()
+    return fig
+
+
+def _plot_scenario_b_interior_rows(reference_label: str,
+                                   rows: Dict[int, Dict[str,
+                                                        object]], px: float,
+                                   strip_half_width_px: int) -> plt.Figure:
+    """Diagnostic page for interior masking + clipping of the divisor."""
+    foil_ids = sorted(rows)
+    fig, axes = plt.subplots(len(foil_ids),
+                             5,
+                             figsize=(26, 5 * len(foil_ids)),
+                             squeeze=False)
+    div_norm = TwoSlopeNorm(vcenter=1.0, vmin=0.6, vmax=1.4)
+    for row, foil_id in enumerate(foil_ids):
+        result = rows[foil_id]
+        circle = result['circle']
+        _plot_image(axes[row][0],
+                    result['interior_mask'].astype(np.float64),
+                    circle,
+                    px,
+                    title=(f'{reference_label} foil {foil_id} interior mask\n'
+                           f'(ref bg-sub > '
+                           f'{result["interior_signal_threshold"]:.0f})'),
+                    cmap='gray',
+                    vmin=0.0,
+                    vmax=1.0)
+        _plot_image(
+            axes[row][1],
+            result['interior_weight'],
+            circle,
+            px,
+            title=(f'interior soft weight\n'
+                   f'(blur σ = '
+                   f'{result["interior_transition_sigma_px"]:.1f} px)'),
+            cmap='gray',
+            vmin=0.0,
+            vmax=1.0)
+        _plot_image(axes[row][2],
+                    result['reference_normalized_smoothed'],
+                    circle,
+                    px,
+                    title=f'original divisor (normalized×smoothed)',
+                    cmap='coolwarm',
+                    norm=TwoSlopeNorm(vcenter=1.0, vmin=0.0, vmax=2.0))
+        _overlay_interior_boundary(axes[row][2], result.get('interior_weight'),
+                                   circle, px)
+        _plot_image(axes[row][3],
+                    result['effective_divisor'],
+                    circle,
+                    px,
+                    title=(f'effective divisor (mask blend + clip)\n'
+                           f'clipped to ['
+                           f'{result["correction_factor_min"]:.2f}, '
+                           f'{result["correction_factor_max"]:.2f}]'),
+                    cmap='coolwarm',
+                    norm=div_norm)
+        _overlay_interior_boundary(axes[row][3], result.get('interior_weight'),
+                                   circle, px)
+
+        # Profile column: H+V profiles of weight, original divisor and
+        # effective divisor (twin axes for the 0..1 weight).
+        ax_prof = axes[row][4]
+        orig = result['reference_normalized_smoothed']
+        eff = result['effective_divisor']
+        weight = result['interior_weight']
+        oh_x, oh_v, ov_x, ov_v = _extract_profiles(orig, circle, px,
+                                                   strip_half_width_px)
+        eh_x, eh_v, ev_x, ev_v = _extract_profiles(eff, circle, px,
+                                                   strip_half_width_px)
+        wh_x, wh_v, wv_x, wv_v = _extract_profiles(weight, circle, px,
+                                                   strip_half_width_px)
+        ax_prof.plot(oh_x,
+                     oh_v,
+                     lw=1.0,
+                     color='tab:blue',
+                     label='orig divisor (H)')
+        ax_prof.plot(ov_x,
+                     ov_v,
+                     lw=1.0,
+                     color='tab:cyan',
+                     ls='--',
+                     label='orig divisor (V)')
+        ax_prof.plot(eh_x,
+                     eh_v,
+                     lw=1.4,
+                     color='tab:red',
+                     label='effective divisor (H)')
+        ax_prof.plot(ev_x,
+                     ev_v,
+                     lw=1.4,
+                     color='tab:orange',
+                     ls='--',
+                     label='effective divisor (V)')
+        ax_prof.axhline(1.0, color='black', lw=0.6, ls=':')
+        ax_prof.axhline(result['correction_factor_min'],
+                        color='gray',
+                        lw=0.5,
+                        ls=':')
+        ax_prof.axhline(result['correction_factor_max'],
+                        color='gray',
+                        lw=0.5,
+                        ls=':')
+        ax_prof.axvline(0.0, color='black', lw=0.6, ls='--', alpha=0.5)
+        ax_prof.set(xlabel='Distance from center [mm]',
+                    ylabel='Divisor',
+                    title=f'Foil {foil_id} divisor profiles')
+        ax_w = ax_prof.twinx()
+        ax_w.plot(wh_x,
+                  wh_v,
+                  lw=0.8,
+                  color='black',
+                  alpha=0.6,
+                  label='interior weight (H)')
+        ax_w.plot(wv_x,
+                  wv_v,
+                  lw=0.8,
+                  color='black',
+                  alpha=0.6,
+                  ls='--',
+                  label='interior weight (V)')
+        ax_w.set_ylim(-0.05, 1.05)
+        ax_w.set_ylabel('Interior weight', color='black')
+        h1, l1 = ax_prof.get_legend_handles_labels()
+        h2, l2 = ax_w.get_legend_handles_labels()
+        ax_prof.legend(h1 + h2, l1 + l2, fontsize=7, loc='lower center')
+    fig.suptitle(
+        f'Scenario B — interior mask and effective divisor ({reference_label})',
+        fontweight='bold',
+        fontsize=12)
     fig.tight_layout()
     return fig
 
@@ -586,6 +747,8 @@ def _plot_scenario_b_bgsub_vs_ratio_rows(
                     cmap=_WGR_CMAP,
                     vmin=0.0,
                     vmax=bg_vmax)
+        _overlay_interior_boundary(axes[row][0], result.get('interior_weight'),
+                                   circle, px)
         _plot_image(
             axes[row][1],
             ratio,
@@ -596,6 +759,8 @@ def _plot_scenario_b_bgsub_vs_ratio_rows(
             cmap=_WGR_CMAP,
             vmin=0.0,
             vmax=bg_vmax)
+        _overlay_interior_boundary(axes[row][1], result.get('interior_weight'),
+                                   circle, px)
 
         bg_hx, bg_hv, bg_vx, bg_vv = _extract_profiles(bg_sub, circle, px,
                                                        strip_half_width_px)
@@ -659,6 +824,8 @@ def _plot_scenario_ab_comparison_rows(
             cmap=_WGR_CMAP,
             vmin=0.0,
             vmax=diff_vmax)
+        _overlay_interior_boundary(axes[row][0],
+                                   result_b.get('interior_weight'), circle, px)
         _plot_image(axes[row][1],
                     ratio_img,
                     circle,
@@ -667,6 +834,8 @@ def _plot_scenario_ab_comparison_rows(
                     cmap=_WGR_CMAP,
                     vmin=0.0,
                     vmax=bg_vmax)
+        _overlay_interior_boundary(axes[row][1],
+                                   result_b.get('interior_weight'), circle, px)
 
         a_hx, a_hv, a_vx, a_vv = _extract_profiles(diff_img, circle, px,
                                                    strip_half_width_px)
@@ -981,6 +1150,10 @@ def explore_background_subtraction(
         f'Stage 1 normalization radius fraction: {config.stage1_normalization_radius_fraction}\n'
         f'Renormalization threshold: {config.renormalization_threshold}\n'
         f'Smoothing sigma: {config.smoothing_sigma_px} px\n'
+        f'Interior signal threshold: {config.interior_signal_threshold}\n'
+        f'Interior transition sigma: {config.interior_transition_sigma_px} px\n'
+        f'Correction factor clip: [{config.correction_factor_min}, '
+        f'{config.correction_factor_max}]\n'
         f'Scenario A contour levels: {config.scenario_a_contour_levels}\n'
         f'Normalized contour levels: {config.normalized_contour_levels}\n'
         f'Ratio contour levels: {config.ratio_contour_levels}',
@@ -1096,8 +1269,26 @@ def explore_background_subtraction(
                   renormalization_factor,
                   out=normalized_smoothed,
                   where=valid_norm)
-        ratio = _safe_divide_with_zero(tgt_bg_sub_centered,
-                                       normalized_smoothed)
+
+        # Restrict the divisor to the detector interior to avoid blow-up at
+        # the foil edge where the normalised reference is close to zero.
+        interior_mask = (
+            np.isfinite(ref_bg_sub_centered)
+            & (ref_bg_sub_centered > config.interior_signal_threshold))
+        interior_weight = _soft_transition_from_mask(
+            interior_mask, config.interior_transition_sigma_px)
+        interior_weight[~np.isfinite(normalized_smoothed)] = 0.0
+
+        # Outside the interior fall back to a divisor of 1.0 (no correction).
+        divisor_with_fallback = np.where(np.isfinite(normalized_smoothed),
+                                         normalized_smoothed, 1.0)
+        effective_divisor = (interior_weight * divisor_with_fallback +
+                             (1.0 - interior_weight) * 1.0)
+        effective_divisor = np.clip(effective_divisor,
+                                    config.correction_factor_min,
+                                    config.correction_factor_max)
+
+        ratio = _safe_divide_with_zero(tgt_bg_sub_centered, effective_divisor)
         ratio[~_radius_mask(ratio.shape, common_circle, config.
                             ratio_mask_radius_fraction)] = np.nan
 
@@ -1107,6 +1298,14 @@ def explore_background_subtraction(
             'reference_normalized_stage1': normalized_stage1,
             'reference_normalized_stage1_smoothed': normalized_stage1_smoothed,
             'reference_normalized_smoothed': normalized_smoothed,
+            'interior_mask': interior_mask,
+            'interior_weight': interior_weight,
+            'effective_divisor': effective_divisor,
+            'interior_signal_threshold': config.interior_signal_threshold,
+            'interior_transition_sigma_px':
+            config.interior_transition_sigma_px,
+            'correction_factor_min': config.correction_factor_min,
+            'correction_factor_max': config.correction_factor_max,
             'ratio': ratio,
             'circle': common_circle,
             'normalization_mean': renormalization_mean,
@@ -1152,6 +1351,11 @@ def explore_background_subtraction(
             f'scenario_b_foil_{foil_id}_renormalization_weight'] = renormalization_weight
         save_dict[
             f'scenario_b_foil_{foil_id}_renormalization_factor'] = renormalization_factor
+        save_dict[f'scenario_b_foil_{foil_id}_interior_mask'] = interior_mask
+        save_dict[
+            f'scenario_b_foil_{foil_id}_interior_weight'] = interior_weight
+        save_dict[
+            f'scenario_b_foil_{foil_id}_effective_divisor'] = effective_divisor
 
     # ── Scenario A ────────────────────────────────────────────────────────
     report.add_text(
@@ -1225,7 +1429,12 @@ def explore_background_subtraction(
         f'  6. Renormalize the smoothed image by that second mean and save it.\n'
         f'  7. Divide {config.target_label} background-subtracted foil by the '
         f'normalized, smoothed {config.reference_label} foil.\n'
-        f'     Division by zero is recorded as 0.',
+        f'     Division by zero is recorded as 0.\n\n'
+        f'Black contour on Scenario-B 2D maps marks where the interior soft '
+        f'weight = 0.5, i.e. the boundary of the region in which the '
+        f'normalisation correction is effectively applied (interior signal '
+        f'> {config.interior_signal_threshold:.0f}, transition '
+        f'\u03c3 = {config.interior_transition_sigma_px:.1f} px).',
         title='\u2501\u2501\u2501  SCENARIO B  \u2501\u2501\u2501',
         source_paths=[str(reference_npz), str(target_npz)])
 
@@ -1290,6 +1499,22 @@ def explore_background_subtraction(
             'final renormalized image, and final profiles'),
         source_paths=[str(reference_npz)])
     plt.close(fig_b_steps)
+
+    fig_b_interior = _plot_scenario_b_interior_rows(
+        config.reference_label, scenario_b_rows, px,
+        config.profile_strip_half_width_px)
+    report.add_figure(
+        fig_b_interior,
+        caption=(
+            'Scenario B: interior mask (signal > '
+            f'{config.interior_signal_threshold:.0f}), soft transition weight '
+            f'(σ = {config.interior_transition_sigma_px:.1f} px), original '
+            'divisor, and effective divisor after blending towards 1.0 '
+            'outside the interior and clipping to '
+            f'[{config.correction_factor_min:.2f}, '
+            f'{config.correction_factor_max:.2f}]'),
+        source_paths=[str(reference_npz)])
+    plt.close(fig_b_interior)
 
     fig_b_norm = _plot_scenario_b_normalized_rows(
         config.reference_label, scenario_b_rows, px,

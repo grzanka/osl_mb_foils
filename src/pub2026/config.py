@@ -365,6 +365,10 @@ class MBOBackgroundSubtractionConfig:
     minimum_divisor: float = 0.5
     ratio_mask_radius_fraction: float = 1.0
     target_bg_y_threshold_mm: float = 7.0
+    interior_signal_threshold: float = 200.0
+    interior_transition_sigma_px: float = 8.0
+    correction_factor_min: float = 0.7
+    correction_factor_max: float = 1.3
     scenario_a_contour_levels: List[float] = field(default_factory=lambda: [
         -300.0, -200.0, -100.0, -50.0, -25.0, 25.0, 50.0, 100.0, 200.0, 300.0
     ])
