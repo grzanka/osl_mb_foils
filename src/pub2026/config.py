@@ -359,6 +359,7 @@ class MBOBackgroundSubtractionConfig:
     normalization_radius_fraction: float = 0.9
     stage1_normalization_radius_fraction: float = 0.5
     renormalization_threshold: float = 0.8
+    renormalization_transition_sigma_px: float = 8.0
     smoothing_sigma_px: float = 6.0
     profile_strip_half_width_px: int = 5
     minimum_divisor: float = 0.5

@@ -9,6 +9,7 @@ reference_foil_ids: [1, 2]
 background_foil_ids: [3, 4]
 background_radius_fraction: 0.8
 normalization_radius_fraction: 0.9
+renormalization_transition_sigma_px: 8.0
 smoothing_sigma_px: 6.0
 profile_strip_half_width_px: 5
 minimum_divisor: 0.5

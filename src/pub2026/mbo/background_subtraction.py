@@ -192,6 +192,19 @@ def _safe_divide_with_zero(numerator: np.ndarray,
     return result
 
 
+def _soft_transition_from_mask(mask: np.ndarray,
+                               sigma_px: float) -> np.ndarray:
+    """Create a smooth 0..1 transition map from a binary mask.
+
+    Values close to 1 mark interior regions where the correction is fully
+    applied; values near 0 mark border regions where correction fades out.
+    """
+    weight = mask.astype(np.float64)
+    if sigma_px > 0.0:
+        weight = ndi.gaussian_filter(weight, sigma=sigma_px)
+    return np.clip(weight, 0.0, 1.0)
+
+
 def _extract_profiles(
     image: np.ndarray, circle: Circle, px: float, strip_half_width_px: int
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -511,12 +524,14 @@ def _plot_scenario_b_normalization_steps_rows(
         threshold_mask = np.where(result['renormalization_mask'], 1.0, np.nan)
         _plot_image(
             axes[row][2],
-            threshold_mask,
+            result['renormalization_weight'],
             circle,
             px,
             title=
-            (f'mask: normalized > {result["renormalization_threshold"]:.2f}\n'
-             f'mean on mask = {result["renormalization_mean"]:.3f}'),
+            (f'soft mask from normalized > {result["renormalization_threshold"]:.2f}\n'
+             f'mean on mask = {result["renormalization_mean"]:.3f}, '
+             f'blur sigma = {result["renormalization_transition_sigma_px"]:.1f}px'
+             ),
             cmap='gray',
             vmin=0.0,
             vmax=1.0)
@@ -1067,7 +1082,20 @@ def explore_background_subtraction(
                 renormalization_mean):
             renormalization_mean = 1.0
 
-        normalized_smoothed = normalized_stage1_smoothed / renormalization_mean
+        renormalization_weight = _soft_transition_from_mask(
+            renormalization_mask, config.renormalization_transition_sigma_px)
+        renormalization_weight[~np.isfinite(normalized_stage1_smoothed)] = 0.0
+        renormalization_factor = (1.0 + renormalization_weight *
+                                  (renormalization_mean - 1.0))
+        normalized_smoothed = np.full_like(normalized_stage1_smoothed,
+                                           np.nan,
+                                           dtype=np.float64)
+        valid_norm = np.isfinite(normalized_stage1_smoothed) & np.isfinite(
+            renormalization_factor) & (renormalization_factor != 0.0)
+        np.divide(normalized_stage1_smoothed,
+                  renormalization_factor,
+                  out=normalized_smoothed,
+                  where=valid_norm)
         ratio = _safe_divide_with_zero(tgt_bg_sub_centered,
                                        normalized_smoothed)
         ratio[~_radius_mask(ratio.shape, common_circle, config.
@@ -1090,6 +1118,10 @@ def explore_background_subtraction(
             'renormalization_mean': renormalization_mean,
             'renormalization_threshold': config.renormalization_threshold,
             'renormalization_mask': renormalization_mask,
+            'renormalization_weight': renormalization_weight,
+            'renormalization_factor': renormalization_factor,
+            'renormalization_transition_sigma_px':
+            config.renormalization_transition_sigma_px,
             'smoothing_sigma_px': config.smoothing_sigma_px,
         }
         save_dict[
@@ -1116,6 +1148,10 @@ def explore_background_subtraction(
             f'scenario_b_foil_{foil_id}_renormalization_mean'] = renormalization_mean
         save_dict[
             f'scenario_b_foil_{foil_id}_renormalization_mask'] = renormalization_mask
+        save_dict[
+            f'scenario_b_foil_{foil_id}_renormalization_weight'] = renormalization_weight
+        save_dict[
+            f'scenario_b_foil_{foil_id}_renormalization_factor'] = renormalization_factor
 
     # ── Scenario A ────────────────────────────────────────────────────────
     report.add_text(
