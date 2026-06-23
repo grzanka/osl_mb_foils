@@ -1,0 +1,10 @@
+type: mc_wedge
+facility: aic144
+file_format: dat
+dose_file: mc_aic144/big/entryx_p3.dat
+fluence_file: mc_aic144/big/entryx_p1.dat
+energy_file: mc_aic144/big/entryx_p2.dat
+depth_filter_min_mm: -15.0
+depth_filter_max_mm: 17.0
+depth_shift_mm: 15.0
+output_csv: mc_aic144_big.csv

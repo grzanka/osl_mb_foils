@@ -1,0 +1,18 @@
+type: mbo_align
+facility: ccb_2026-03-17
+input_npz: mbo_survey_ccb_2026-03-17.npz
+pixel_size_mm: 0.074
+n_sigma: 7.0
+probe_radius: 30
+edge_threshold: 550.0
+edge_x_positions_mm: [12, 13, 14, 15, 16, 17, 18, 19, 20, 21]
+edge_stripe_width_mm: 0.74
+circle_gradient_high: 650.0
+circle_gradient_low: 550.0
+circle_edge_distance_mm: 0.7
+circle_radius_tolerance: 0.05
+crop_size_mm: 24.0
+clip_percentile_low: 1.0
+clip_percentile_high: 99.0
+contour_levels: [600, 800, 1000, 1200, 1400, 1600]
+output_npz: mbo_align_ccb_2026-03-17.npz

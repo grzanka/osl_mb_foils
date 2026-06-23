@@ -198,6 +198,12 @@ pyrightconfig.json
 # Built Visual Studio Code Extensions
 *.vsix
 
+# pub2026 raw data (large files, not tracked in git)
+data/raw/pub2026/
+
+# pub2026 pipeline output
+output/
+
 ### VisualStudioCode Patch ###
 # Ignore all local history of files
 .history

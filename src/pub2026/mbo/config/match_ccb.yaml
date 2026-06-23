@@ -1,0 +1,27 @@
+type: mbo_match
+facility: ccb
+data_dir: foils_mbo_ccb/2026-02-20
+input_pkl: mbo_ccb_processed.pkl
+left_foil_id: 2
+right_foil_id: 3
+edge_threshold: 400.0
+edge_x_positions_mm: [16, 18, 20, 22, 24, 26, 28]
+edge_stripe_width_mm: 0.74
+crop_size: 300
+merge_margin: 0
+pixel_size_mm: 0.074
+vmax: 3000.0
+white_threshold: 0.05
+circle_gradient_high: 400.0
+circle_gradient_low: 50.0
+circle_edge_distance_mm: 0.7
+circle_radius_tolerance: 0.05
+profile_y_min_mm: 10.0
+profile_y_max_mm: 16.0
+section1_x_min: 7.0
+section1_x_max: 17.0
+section2_x_min: 21.2
+section2_x_max: 27.0
+smoothing_sigma_px: 3
+output_merged_npz: merged_foils_2_3.npz
+output_profile_npz: profile_foils_2_3.npz

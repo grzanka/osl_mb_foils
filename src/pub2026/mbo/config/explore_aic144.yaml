@@ -1,0 +1,10 @@
+type: mbo_explore
+facility: aic144
+data_dir: foils_mbo_aic144/2025-10-09
+cut_px: 300
+gaussian_kernel: 3
+median_filter_size: 5
+n_sigma: 7.0
+probe_radius: 30
+pixel_size_mm: 0.074
+output_pkl: mbo_aic144_processed.pkl
